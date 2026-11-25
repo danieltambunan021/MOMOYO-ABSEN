@@ -1,0 +1,632 @@
+<!DOCTYPE html>
+<html lang="id">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no, viewport-fit=cover" />
+  <meta name="theme-color" content="#E11D48" />
+  <meta name="apple-mobile-web-app-capable" content="yes" />
+  <meta name="apple-mobile-web-app-status-bar-style" content="default" />
+  <meta name="apple-mobile-web-app-title" content="MOMOYO Absen" />
+  <title>MOMOYO Absensi</title>
+  <link rel="manifest" href="manifest.json" />
+  <link rel="icon" type="image/svg+xml" href="icon.svg" />
+  <link rel="apple-touch-icon" href="icon.svg" />
+  <link rel="preconnect" href="https://fonts.googleapis.com" />
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
+  <link href="https://fonts.googleapis.com/css2?family=Plus+Jakarta+Sans:wght@400;500;600;700;800&display=swap" rel="stylesheet" />
+  <link rel="stylesheet" href="style.css" />
+  <script src="https://cdn.jsdelivr.net/npm/chart.js@4.4.4/dist/chart.umd.min.js" defer></script>
+</head>
+<body>
+  <div class="bg-orb orb-1"></div>
+  <div class="bg-orb orb-2"></div>
+
+  <!-- Banner Install PWA (Android) -->
+  <div id="pwaInstallBanner" class="install-banner hidden">
+    <div>
+      <strong>Pasang Aplikasi MOMOYO</strong>
+      <span>Akses cepat 1 ketukan dari layar utama HP</span>
+    </div>
+    <div class="install-actions">
+      <button id="btnInstallPwa" class="btn-sm btn-primary">Pasang</button>
+      <button id="btnDismissPwa" class="btn-icon-close" aria-label="Tutup">&times;</button>
+    </div>
+  </div>
+
+  <!-- ==================== LAYAR LOGIN ==================== -->
+  <section id="loginView" class="login-screen">
+    <div class="glass-card login-card">
+      <div class="brand-header">
+        <div class="brand-badge">M</div>
+        <div>
+          <h1>MOMOYO</h1>
+          <p class="subtitle">Sistem Absensi Crew &amp; Outlet</p>
+        </div>
+      </div>
+
+      <div class="role-tabs">
+        <button id="tabRoleCrew" class="role-tab active" type="button">Masuk Crew</button>
+        <button id="tabRoleAdmin" class="role-tab" type="button">Masuk Admin</button>
+      </div>
+
+      <!-- Form Crew -->
+      <form id="formLoginCrew" class="auth-form">
+        <div class="form-group">
+          <label for="loginStore">Pilih Cabang Toko</label>
+          <select id="loginStore" required>
+            <option value="">Memuat daftar toko...</option>
+          </select>
+        </div>
+        <div class="form-group">
+          <label for="loginCrew">Nama Crew</label>
+          <select id="loginCrew" required disabled>
+            <option value="">Pilih toko dulu</option>
+          </select>
+        </div>
+        <div class="form-group">
+          <label for="loginPin">PIN / Password Crew</label>
+          <input id="loginPin" type="password" inputmode="numeric" placeholder="Masukkan PIN dari Admin" required autocomplete="current-password" />
+        </div>
+        <button type="submit" id="btnLoginCrew" class="btn btn-primary btn-block">Masuk sebagai Crew</button>
+      </form>
+
+      <!-- Form Admin -->
+      <form id="formLoginAdmin" class="auth-form hidden">
+        <div class="form-group">
+          <label for="loginAdminPass">Password Admin</label>
+          <input id="loginAdminPass" type="password" placeholder="Masukkan password Admin" required autocomplete="current-password" />
+        </div>
+        <button type="submit" id="btnLoginAdmin" class="btn btn-primary btn-block">Masuk Dashboard Admin</button>
+      </form>
+
+      <p class="login-note">Lupa PIN atau belum terdaftar? Hubungi Admin MOMOYO.</p>
+    </div>
+  </section>
+
+  <!-- ==================== APLIKASI UTAMA ==================== -->
+  <div id="appShell" class="app-shell hidden">
+    <!-- Top Header -->
+    <header class="top-header glass-bar">
+      <div class="user-pill">
+        <div class="avatar-circle" id="headerAvatar">M</div>
+        <div class="user-meta">
+          <strong id="headerName">Nama</strong>
+          <span id="headerRoleStore">Toko</span>
+        </div>
+      </div>
+      <div class="header-right">
+        <span id="offlineBadge" class="badge badge-danger hidden">Offline</span>
+        <button id="btnLogout" class="btn-ghost-sm" type="button">Keluar</button>
+      </div>
+    </header>
+
+    <!-- Konten Utama -->
+    <main class="main-content">
+
+      <!-- 1. VIEW ABSENSI -->
+      <section id="viewAbsen" class="page-view active">
+        <div class="glass-card hero-clock-card">
+          <div class="clock-date" id="liveDate">Memuat tanggal...</div>
+          <div class="clock-time" id="liveClock">--:--:--</div>
+          <div class="clock-note">Jam resmi tercatat otomatis mengikuti waktu server (WIB)</div>
+        </div>
+
+        <form id="formAbsen" class="glass-card absen-form-card">
+          <!-- Toggle Jenis Masuk / Pulang -->
+          <div class="form-group">
+            <label>Jenis Absensi</label>
+            <div class="segmented-control">
+              <button type="button" class="seg-btn active" data-jenis="MASUK">Absen Masuk</button>
+              <button type="button" class="seg-btn" data-jenis="PULANG">Absen Pulang</button>
+            </div>
+            <input type="hidden" id="absenJenis" value="MASUK" />
+          </div>
+
+          <!-- Info Otomatis (Crew: readonly, Admin: bisa pilih) -->
+          <div class="grid-2">
+            <div class="form-group">
+              <label for="absenToko">Outlet</label>
+              <select id="absenToko" required></select>
+            </div>
+            <div class="form-group">
+              <label for="absenShift">Shift</label>
+              <select id="absenShift" required>
+                <option value="PAGI">PAGI (08:00–16:00)</option>
+                <option value="SIANG">SIANG (14:00–22:00)</option>
+              </select>
+            </div>
+          </div>
+
+          <div class="form-group" id="absenNamaWrapper">
+            <label for="absenNama">Nama Crew</label>
+            <input type="text" id="absenNama" readonly />
+          </div>
+
+          <!-- Upload Foto Timestamp / Kamera -->
+          <div class="form-group">
+            <label>Foto Selfie (Timestamp Camera / Kamera)</label>
+            <div class="photo-actions">
+              <button type="button" id="btnPickGallery" class="btn btn-outline">
+                Pilih Foto Timestamp
+              </button>
+              <button type="button" id="btnOpenCamera" class="btn btn-soft">
+                Kamera Langsung
+              </button>
+            </div>
+            <!-- Input Galeri (untuk hasil aplikasi Timestamp Camera) -->
+            <input type="file" id="inputFotoGaleri" accept="image/*" class="hidden" />
+            <!-- Input Kamera Langsung -->
+            <input type="file" id="inputFotoKamera" accept="image/*" capture="user" class="hidden" />
+
+            <div id="photoPreviewBox" class="photo-preview hidden">
+              <img id="photoPreviewImg" alt="Pratinjau foto absensi" />
+              <div class="photo-preview-bar">
+                <span id="photoSizeInfo">Foto siap dikirim</span>
+                <button type="button" id="btnRemovePhoto" class="btn-link-danger">Ganti Foto</button>
+              </div>
+            </div>
+            <div id="photoEmptyBox" class="photo-empty">
+              Belum ada foto dipilih. Pilih hasil foto dari aplikasi Timestamp Camera atau ambil langsung.
+            </div>
+          </div>
+
+          <!-- Indikator GPS (jika toko mengaktifkan GPS) -->
+          <div id="gpsStatusBox" class="info-banner hidden">
+            <span id="gpsStatusText">Lokasi GPS akan diverifikasi saat mengirim absen.</span>
+          </div>
+
+          <!-- Error / Retry Banner saat koneksi lambat/putus -->
+          <div id="absenRetryBox" class="error-banner hidden">
+            <p id="absenRetryMsg">Gagal mengirim absen.</p>
+            <button type="button" id="btnRetryAbsen" class="btn btn-sm btn-primary">Coba Kirim Lagi</button>
+          </div>
+
+          <button type="submit" id="btnSubmitAbsen" class="btn btn-primary btn-lg btn-block">
+            Kirim Absen Sekarang
+          </button>
+        </form>
+      </section>
+
+      <!-- 2. VIEW RIWAYAT (CREW & ADMIN) -->
+      <section id="viewRiwayat" class="page-view hidden">
+        <div class="page-title-row">
+          <h2>Riwayat Absensi</h2>
+          <button type="button" id="btnRefreshHistory" class="btn-ghost-sm">Muat Ulang</button>
+        </div>
+
+        <div class="glass-card filter-card">
+          <div class="filter-grid">
+            <input type="text" id="filterSearch" placeholder="Cari nama crew..." class="admin-only" />
+            <select id="filterToko" class="admin-only">
+              <option value="SEMUA">Semua Toko</option>
+            </select>
+            <select id="filterShift">
+              <option value="SEMUA">Semua Shift</option>
+              <option value="PAGI">Shift Pagi</option>
+              <option value="SIANG">Shift Siang</option>
+            </select>
+            <input type="date" id="filterStart" title="Dari tanggal" />
+            <input type="date" id="filterEnd" title="Sampai tanggal" />
+          </div>
+          <div class="filter-actions">
+            <button type="button" id="btnApplyFilter" class="btn btn-primary btn-sm">Terapkan Filter</button>
+            <button type="button" id="btnResetFilter" class="btn btn-outline btn-sm">Reset</button>
+          </div>
+        </div>
+
+        <div id="historyList" class="record-list">
+          <div class="empty-state">Memuat riwayat...</div>
+        </div>
+      </section>
+
+      <!-- 3. VIEW DASHBOARD (ADMIN) -->
+      <section id="viewDashboard" class="page-view hidden">
+        <div class="page-title-row">
+          <div>
+            <h2>Dashboard Hari Ini</h2>
+            <p class="subtitle" id="dashDateLabel">-</p>
+          </div>
+          <button type="button" id="btnRefreshDash" class="btn-ghost-sm">Muat Ulang</button>
+        </div>
+
+        <div class="kpi-grid">
+          <div class="glass-card kpi-card">
+            <span class="kpi-label">Masuk Hari Ini</span>
+            <strong class="kpi-value text-primary" id="kpiMasuk">0</strong>
+          </div>
+          <div class="glass-card kpi-card">
+            <span class="kpi-label">Sudah Pulang</span>
+            <strong class="kpi-value text-success" id="kpiPulang">0</strong>
+          </div>
+          <div class="glass-card kpi-card">
+            <span class="kpi-label">Belum Pulang</span>
+            <strong class="kpi-value text-warning" id="kpiBelumPulang">0</strong>
+          </div>
+          <div class="glass-card kpi-card">
+            <span class="kpi-label">Terlambat</span>
+            <strong class="kpi-value text-danger" id="kpiTelat">0</strong>
+          </div>
+        </div>
+
+        <!-- Peringatan Belum Absen Pulang -->
+        <div id="belumPulangCard" class="glass-card warning-card hidden">
+          <h3>Belum Absen Pulang</h3>
+          <div id="belumPulangList" class="mini-list"></div>
+        </div>
+
+        <!-- Ringkasan Per Toko -->
+        <div class="glass-card section-card">
+          <h3>Ringkasan per Cabang Toko</h3>
+          <div class="table-wrap">
+            <table class="data-table">
+              <thead>
+                <tr>
+                  <th>Toko</th>
+                  <th>Masuk</th>
+                  <th>Pulang</th>
+                  <th>Belum Pulang</th>
+                  <th>Telat</th>
+                </tr>
+              </thead>
+              <tbody id="dashStoreTable"></tbody>
+            </table>
+          </div>
+        </div>
+
+        <!-- Visualisasi Grafik -->
+        <div class="chart-grid">
+          <div class="glass-card section-card">
+            <h3>Grafik Hari Ini per Toko</h3>
+            <div class="chart-box"><canvas id="chartPerStore"></canvas></div>
+          </div>
+          <div class="glass-card section-card">
+            <h3>Tren 7 Hari Terakhir</h3>
+            <div class="chart-box"><canvas id="chart7Days"></canvas></div>
+          </div>
+        </div>
+
+        <!-- Detail Absen Hari Ini -->
+        <div class="glass-card section-card">
+          <h3>Detail Absensi Hari Ini</h3>
+          <div id="dashTodayList" class="record-list"></div>
+        </div>
+      </section>
+
+      <!-- 4. VIEW INSIGHT & EKSPOR REKAP (ADMIN) -->
+      <section id="viewInsight" class="page-view hidden">
+        <div class="page-title-row">
+          <h2>Insight &amp; Rekap Gaji</h2>
+        </div>
+
+        <div class="glass-card section-card">
+          <div class="segmented-control" id="insightPeriodToggle">
+            <button type="button" class="seg-btn active" data-period="week">Minggu Ini vs Lalu</button>
+            <button type="button" class="seg-btn" data-period="month">Bulan Ini vs Lalu</button>
+          </div>
+          <p class="subtitle mt-8" id="insightPeriodDesc">Memuat perbandingan...</p>
+
+          <div class="kpi-grid mt-12">
+            <div class="mini-kpi">
+              <span class="kpi-label">Total Jam Kerja</span>
+              <strong id="insJam">0 j</strong>
+              <small id="insJamDiff">-</small>
+            </div>
+            <div class="mini-kpi">
+              <span class="kpi-label">Total Hari Hadir</span>
+              <strong id="insHadir">0</strong>
+              <small id="insHadirDiff">-</small>
+            </div>
+            <div class="mini-kpi">
+              <span class="kpi-label">Total Keterlambatan</span>
+              <strong id="insTelat">0</strong>
+              <small id="insTelatDiff">-</small>
+            </div>
+          </div>
+
+          <h3 class="mt-16">Perbandingan per Toko</h3>
+          <div class="table-wrap">
+            <table class="data-table">
+              <thead>
+                <tr>
+                  <th>Toko</th>
+                  <th>Jam Kerja</th>
+                  <th>Hadir</th>
+                  <th>Terlambat</th>
+                </tr>
+              </thead>
+              <tbody id="insStoreTable"></tbody>
+            </table>
+          </div>
+
+          <h3 class="mt-16">Perbandingan per Crew</h3>
+          <div class="table-wrap">
+            <table class="data-table">
+              <thead>
+                <tr>
+                  <th>Nama</th>
+                  <th>Toko</th>
+                  <th>Jam Kerja</th>
+                  <th>Hadir</th>
+                  <th>Terlambat</th>
+                </tr>
+              </thead>
+              <tbody id="insCrewTable"></tbody>
+            </table>
+          </div>
+        </div>
+
+        <!-- Ekspor Rekap Bulanan -->
+        <div class="glass-card section-card">
+          <h3>Ekspor Rekap Bulanan (Keperluan Gaji)</h3>
+          <div class="recap-controls">
+            <select id="recapMonth"></select>
+            <select id="recapYear"></select>
+            <button type="button" id="btnLoadRecap" class="btn btn-primary btn-sm">Tampilkan</button>
+            <button type="button" id="btnExportCsv" class="btn btn-outline btn-sm">Unduh CSV (Excel)</button>
+          </div>
+          <div class="table-wrap mt-12">
+            <table class="data-table">
+              <thead>
+                <tr>
+                  <th>Nama</th>
+                  <th>Toko</th>
+                  <th>Hadir</th>
+                  <th>Total Jam</th>
+                  <th>Telat</th>
+                  <th>Lupa Pulang</th>
+                </tr>
+              </thead>
+              <tbody id="recapTableBody">
+                <tr><td colspan="6" class="text-center">Pilih bulan lalu klik Tampilkan.</td></tr>
+              </tbody>
+            </table>
+          </div>
+        </div>
+      </section>
+
+      <!-- 5. VIEW KELOLA (ADMIN) -->
+      <section id="viewKelola" class="page-view hidden">
+        <h2>Kelola MOMOYO</h2>
+
+        <!-- Kelola Crew -->
+        <div class="glass-card section-card">
+          <div class="section-header-row">
+            <h3>Daftar Crew &amp; PIN</h3>
+            <button type="button" id="btnAddCrew" class="btn btn-primary btn-sm">+ Tambah Crew</button>
+          </div>
+          <div id="manageCrewList" class="manage-list"></div>
+        </div>
+
+        <!-- Kelola Toko -->
+        <div class="glass-card section-card">
+          <div class="section-header-row">
+            <h3>Cabang Toko, Shift &amp; GPS</h3>
+            <button type="button" id="btnAddStore" class="btn btn-primary btn-sm">+ Tambah Toko</button>
+          </div>
+          <div id="manageStoreList" class="manage-list"></div>
+        </div>
+
+        <!-- Ganti Password Admin -->
+        <div class="glass-card section-card">
+          <h3>Ganti Password Admin</h3>
+          <form id="formChangeAdminPass" class="stack-form">
+            <div class="form-group">
+              <label for="oldAdminPass">Password Lama</label>
+              <input type="password" id="oldAdminPass" required />
+            </div>
+            <div class="form-group">
+              <label for="newAdminPass">Password Baru (min. 6 karakter)</label>
+              <input type="password" id="newAdminPass" minlength="6" required />
+            </div>
+            <button type="submit" class="btn btn-primary">Simpan Password Baru</button>
+          </form>
+        </div>
+      </section>
+
+    </main>
+
+    <!-- Bottom Navigation -->
+    <nav id="bottomNav" class="bottom-nav glass-bar"></nav>
+  </div>
+
+  <!-- ==================== MODALS ==================== -->
+
+  <!-- Modal Konfirmasi Absen Sukses -->
+  <div id="modalSuccess" class="modal-backdrop hidden">
+    <div class="modal-card">
+      <div class="success-icon">&#10003;</div>
+      <h3>Absensi Berhasil Dicatat!</h3>
+      <div id="successDetails" class="detail-grid"></div>
+      <button type="button" class="btn btn-primary btn-block mt-16" onclick="closeModal('modalSuccess')">Selesai</button>
+    </div>
+  </div>
+
+  <!-- Modal Pratinjau Foto -->
+  <div id="modalPhoto" class="modal-backdrop hidden">
+    <div class="modal-card">
+      <div class="modal-head">
+        <h3>Foto Absensi</h3>
+        <button type="button" class="btn-icon-close" onclick="closeModal('modalPhoto')">&times;</button>
+      </div>
+      <img id="modalPhotoImg" class="modal-img" alt="Foto Absensi" />
+      <a id="modalPhotoLink" href="#" target="_blank" rel="noopener" class="btn btn-outline btn-block mt-12">Buka di Google Drive</a>
+    </div>
+  </div>
+
+  <!-- Modal Edit Absensi (Admin) -->
+  <div id="modalEditRecord" class="modal-backdrop hidden">
+    <div class="modal-card">
+      <div class="modal-head">
+        <h3>Edit Data Absensi</h3>
+        <button type="button" class="btn-icon-close" onclick="closeModal('modalEditRecord')">&times;</button>
+      </div>
+      <form id="formEditRecord" class="stack-form">
+        <input type="hidden" id="editRowNumber" />
+        <input type="hidden" id="editRecordId" />
+        <div class="grid-2">
+          <div class="form-group">
+            <label for="editJenis">Jenis</label>
+            <select id="editJenis">
+              <option value="MASUK">MASUK</option>
+              <option value="PULANG">PULANG</option>
+            </select>
+          </div>
+          <div class="form-group">
+            <label for="editShift">Shift</label>
+            <select id="editShift">
+              <option value="PAGI">PAGI</option>
+              <option value="SIANG">SIANG</option>
+            </select>
+          </div>
+        </div>
+        <div class="form-group">
+          <label for="editNama">Nama Crew</label>
+          <input type="text" id="editNama" required />
+        </div>
+        <div class="form-group">
+          <label for="editToko">Toko</label>
+          <input type="text" id="editToko" required />
+        </div>
+        <div class="grid-2">
+          <div class="form-group">
+            <label for="editJam">Jam (HH:mm:ss)</label>
+            <input type="text" id="editJam" placeholder="08:05:00" required />
+          </div>
+          <div class="form-group">
+            <label for="editStatus">Status</label>
+            <input type="text" id="editStatus" placeholder="TEPAT WAKTU" />
+          </div>
+        </div>
+        <button type="submit" class="btn btn-primary btn-block">Simpan Perubahan</button>
+      </form>
+    </div>
+  </div>
+
+  <!-- Modal Konfirmasi Hapus -->
+  <div id="modalConfirmDelete" class="modal-backdrop hidden">
+    <div class="modal-card">
+      <h3>Hapus Data Ini?</h3>
+      <p id="deleteConfirmText" class="subtitle mt-8">Data yang dihapus tidak bisa dikembalikan.</p>
+      <div class="grid-2 mt-16">
+        <button type="button" class="btn btn-outline" onclick="closeModal('modalConfirmDelete')">Batal</button>
+        <button type="button" id="btnConfirmDelete" class="btn btn-danger">Ya, Hapus</button>
+      </div>
+    </div>
+  </div>
+
+  <!-- Modal Tambah/Edit Crew -->
+  <div id="modalCrew" class="modal-backdrop hidden">
+    <div class="modal-card">
+      <div class="modal-head">
+        <h3 id="modalCrewTitle">Tambah Crew</h3>
+        <button type="button" class="btn-icon-close" onclick="closeModal('modalCrew')">&times;</button>
+      </div>
+      <form id="formCrew" class="stack-form">
+        <input type="hidden" id="crewIdInput" />
+        <div class="form-group">
+          <label for="crewNamaInput">Nama Crew</label>
+          <input type="text" id="crewNamaInput" required />
+        </div>
+        <div class="grid-2">
+          <div class="form-group">
+            <label for="crewTokoInput">Cabang Toko</label>
+            <select id="crewTokoInput" required></select>
+          </div>
+          <div class="form-group">
+            <label for="crewShiftInput">Shift Utama</label>
+            <select id="crewShiftInput">
+              <option value="PAGI">PAGI</option>
+              <option value="SIANG">SIANG</option>
+            </select>
+          </div>
+        </div>
+        <div class="form-group">
+          <label for="crewPinInput">PIN / Password Crew</label>
+          <input type="text" id="crewPinInput" placeholder="Min. 4 karakter (kosongkan jika tidak ganti)" />
+        </div>
+        <label class="checkbox-row">
+          <input type="checkbox" id="crewAktifInput" checked />
+          <span>Crew Aktif (bisa login &amp; absen)</span>
+        </label>
+        <button type="submit" class="btn btn-primary btn-block">Simpan Crew</button>
+      </form>
+    </div>
+  </div>
+
+  <!-- Modal Tambah/Edit Toko -->
+  <div id="modalStore" class="modal-backdrop hidden">
+    <div class="modal-card">
+      <div class="modal-head">
+        <h3 id="modalStoreTitle">Pengaturan Toko</h3>
+        <button type="button" class="btn-icon-close" onclick="closeModal('modalStore')">&times;</button>
+      </div>
+      <form id="formStore" class="stack-form">
+        <input type="hidden" id="storeOriginalName" />
+        <div class="form-group">
+          <label for="storeNamaInput">Nama Cabang Toko</label>
+          <input type="text" id="storeNamaInput" required />
+        </div>
+        <div class="grid-2">
+          <div class="form-group">
+            <label for="storePagiMulai">Pagi Mulai</label>
+            <input type="time" id="storePagiMulai" value="08:00" required />
+          </div>
+          <div class="form-group">
+            <label for="storePagiSelesai">Pagi Selesai</label>
+            <input type="time" id="storePagiSelesai" value="16:00" required />
+          </div>
+        </div>
+        <div class="grid-2">
+          <div class="form-group">
+            <label for="storeSiangMulai">Siang Mulai</label>
+            <input type="time" id="storeSiangMulai" value="14:00" required />
+          </div>
+          <div class="form-group">
+            <label for="storeSiangSelesai">Siang Selesai</label>
+            <input type="time" id="storeSiangSelesai" value="22:00" required />
+          </div>
+        </div>
+        <div class="form-group">
+          <label for="storeToleransi">Toleransi Keterlambatan (menit)</label>
+          <input type="number" id="storeToleransi" value="10" min="0" max="120" required />
+        </div>
+        <label class="checkbox-row">
+          <input type="checkbox" id="storeWajibGps" />
+          <span>Wajib verifikasi lokasi GPS di toko ini</span>
+        </label>
+        <div id="storeGpsFields" class="gps-fields hidden">
+          <div class="grid-2">
+            <div class="form-group">
+              <label for="storeLat">Latitude</label>
+              <input type="text" id="storeLat" placeholder="-6.4321" />
+            </div>
+            <div class="form-group">
+              <label for="storeLng">Longitude</label>
+              <input type="text" id="storeLng" placeholder="106.8456" />
+            </div>
+          </div>
+          <div class="grid-2">
+            <div class="form-group">
+              <label for="storeRadius">Radius (meter)</label>
+              <input type="number" id="storeRadius" value="100" min="20" max="2000" />
+            </div>
+            <div class="form-group flex-end">
+              <button type="button" id="btnGetCurrentGps" class="btn btn-soft btn-sm btn-block">Ambil GPS Sekarang</button>
+            </div>
+          </div>
+        </div>
+        <button type="submit" class="btn btn-primary btn-block">Simpan Toko</button>
+      </form>
+    </div>
+  </div>
+
+  <!-- Loading Overlay & Toast -->
+  <div id="loadingOverlay" class="loading-overlay hidden">
+    <div class="spinner"></div>
+    <span id="loadingText">Memproses...</span>
+  </div>
+  <div id="toast" class="toast hidden"></div>
+
+  <script src="app.js"></script>
+</body>
+</html>
