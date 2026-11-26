@@ -1,4 +1,4 @@
-const CACHE_NAME = 'momoyo-absen-v1';
+const CACHE_NAME = 'momoyo-absen-v2';
 const APP_ASSETS = [
   './',
   './index.html',
