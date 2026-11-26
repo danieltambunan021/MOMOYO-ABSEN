@@ -105,17 +105,25 @@ body {
   transition: background-color 0.3s ease;
 }
 
+/* Wallpaper Responsif: Auto-Landscape (Laptop) & Auto-Portrait (HP) */
 .theme-wallpaper {
   position: fixed;
   inset: 0;
   z-index: -2;
   pointer-events: none;
-  background-position: center;
+  background-position: center center;
   background-repeat: repeat;
 }
 .theme-wallpaper.has-custom-img {
   background-size: cover;
   background-repeat: no-repeat;
+  background-position: center center;
+  background-image: var(--wp-desktop, var(--wp-mobile));
+}
+@media (orientation: portrait), (max-width: 768px) {
+  .theme-wallpaper.has-custom-img {
+    background-image: var(--wp-mobile, var(--wp-desktop));
+  }
 }
 .theme-wallpaper.has-custom-img::after {
   content: '';
@@ -206,7 +214,7 @@ body {
   justify-content: center;
   padding: 20px;
 }
-.login-card { width: 100%; max-width: 430px; padding: 26px 22px; }
+.login-card { width: 100%; max-width: 440px; padding: 26px 22px; }
 .brand-header { display: flex; align-items: center; gap: 14px; margin-bottom: 20px; }
 .brand-badge {
   width: 50px; height: 50px;
@@ -228,9 +236,10 @@ body {
 .role-tabs-3 { grid-template-columns: repeat(3, 1fr); }
 .role-tab {
   border: none; background: transparent;
-  padding: 10px 6px; border-radius: 9px;
-  font-weight: 700; font-size: 0.85rem; color: var(--muted);
-  cursor: pointer; transition: 0.2s; font-family: inherit;
+  padding: 9px 5px; border-radius: 9px;
+  font-weight: 700; font-size: 0.77rem; line-height: 1.22;
+  color: var(--muted); cursor: pointer; transition: 0.2s; font-family: inherit;
+  display: flex; align-items: center; justify-content: center; text-align: center;
 }
 .role-tab.active {
   background: #fff; color: var(--primary);
@@ -468,7 +477,7 @@ h3 { font-size: 1rem; font-weight: 700; }
   display: flex; align-items: center; justify-content: space-between; gap: 10px;
 }
 
-/* ==================== KALENDER CREW & DETAILS ADMIN ==================== */
+/* ==================== KALENDER KARYAWAN & DETAILS ==================== */
 .cal-header {
   display: flex; align-items: center; justify-content: space-between;
   margin-bottom: 14px;
@@ -600,7 +609,7 @@ h3 { font-size: 1rem; font-weight: 700; }
 .clickable-row:hover { background: var(--primary-soft); }
 .clickable-row td:first-child { color: var(--primary); }
 
-/* Store Detail Crew Cards + Bar DETAILS */
+/* Store Detail Karyawan Cards + Bar DETAILS */
 .store-detail-filter {
   display: grid; grid-template-columns: 1fr 0.8fr auto; gap: 8px;
 }
@@ -666,6 +675,9 @@ h3 { font-size: 1rem; font-weight: 700; }
 .st-pagi { background: #ECFDF5; color: #065F46; border-color: #A7F3D0; }
 .st-siang { background: #FEF9C3; color: #854D0E; border-color: #FDE047; }
 .st-fullday { background: #DBEAFE; color: #1E40AF; border-color: #93C5FD; }
+.st-izin { background: #FFEDD5; color: #C2410C; border-color: #FDBA74; }
+.st-sakit { background: #FEE2E2; color: #B91C1C; border-color: #FCA5A5; }
+.st-lainnya { background: #F3E8FF; color: #6B21A8; border-color: #D8B4FE; }
 .st-off { background: #FEE2E2; color: #B91C1C; border-color: #FCA5A5; }
 .st-out { background: #475569; color: #F8FAFC; border-color: #334155; }
 .st-bko { background: #F3E8FF; color: #6B21A8; border-color: #D8B4FE; }
@@ -688,6 +700,7 @@ h3 { font-size: 1rem; font-weight: 700; }
   position: sticky; top: 0; z-index: 5;
   background: #0F172A; color: #fff; font-weight: 700;
 }
+.jadwal-table th.col-supervisor { background: #7F1D1D; color: #FEF08A; }
 .jadwal-table th.col-captain { background: #1E293B; color: #FDE047; }
 .jadwal-table th.col-bakery { background: #92400E; color: #FEF3C7; }
 .jadwal-table th.col-drink { background: #1D4ED8; color: #EFF6FF; }
@@ -713,6 +726,9 @@ h3 { font-size: 1rem; font-weight: 700; }
 .jadwal-cell-select.st-pagi { background: #ECFDF5; color: #065F46; border-color: #6EE7B7; }
 .jadwal-cell-select.st-siang { background: #FEF9C3; color: #854D0E; border-color: #FACC15; }
 .jadwal-cell-select.st-fullday { background: #DBEAFE; color: #1E40AF; border-color: #60A5FA; }
+.jadwal-cell-select.st-izin { background: #FFEDD5; color: #C2410C; border-color: #FB923C; }
+.jadwal-cell-select.st-sakit { background: #FEE2E2; color: #B91C1C; border-color: #F87171; }
+.jadwal-cell-select.st-lainnya { background: #F3E8FF; color: #6B21A8; border-color: #C084FC; }
 .jadwal-cell-select.st-off { background: #FEE2E2; color: #B91C1C; border-color: #F87171; }
 .jadwal-cell-select.st-out { background: #475569; color: #FFFFFF; border-color: #334155; }
 .jadwal-cell-select.st-bko { background: #F3E8FF; color: #6B21A8; border-color: #C084FC; }
@@ -757,7 +773,7 @@ h3 { font-size: 1rem; font-weight: 700; }
 .gallery-meta strong { display: block; font-size: 0.86rem; line-height: 1.25; }
 .gallery-meta span { display: block; font-size: 0.74rem; color: var(--muted); margin-top: 2px; }
 
-/* Theme Picker (Admin Kelola) */
+/* Theme Picker & Dual Wallpaper Slots (Admin Kelola) */
 .theme-grid { display: grid; grid-template-columns: repeat(2, 1fr); gap: 8px; }
 @media (min-width: 600px) { .theme-grid { grid-template-columns: repeat(3, 1fr); } }
 .theme-chip {
@@ -776,8 +792,34 @@ h3 { font-size: 1rem; font-weight: 700; }
 .swatch-merdeka { background: linear-gradient(135deg, #DC2626 50%, #FFFFFF 50%); }
 .swatch-custom { background: linear-gradient(135deg, #6366F1, #EC4899, #14B8A6); }
 
-.wallpaper-preview { border-radius: 12px; overflow: hidden; border: 1.5px solid #E2E8F0; margin-top: 8px; }
-.wallpaper-preview img { width: 100%; max-height: 150px; object-fit: cover; display: block; }
+.wallpaper-slots-grid {
+  display: grid; grid-template-columns: 1fr; gap: 12px;
+}
+@media (min-width: 640px) { .wallpaper-slots-grid { grid-template-columns: 1fr 1fr; } }
+
+.wallpaper-slot-card {
+  background: #F8FAFC; border: 1px solid #E2E8F0;
+  border-radius: 14px; padding: 12px;
+}
+.wallpaper-preview {
+  border-radius: 12px; overflow: hidden; border: 1.5px solid #E2E8F0;
+  margin-top: 8px; background: #0F172A;
+  display: flex; align-items: center; justify-content: center;
+}
+.wallpaper-preview.preview-portrait {
+  max-width: 145px;
+  aspect-ratio: 9 / 16;
+  margin-left: auto;
+  margin-right: auto;
+}
+.wallpaper-preview.preview-landscape {
+  width: 100%;
+  aspect-ratio: 16 / 9;
+}
+.wallpaper-preview img {
+  width: 100%; height: 100%;
+  object-fit: contain; display: block;
+}
 
 /* ==================== CROP & ZOOM FOTO PROFIL (ALA SOSMED) ==================== */
 .crop-stage-wrap { display: flex; justify-content: center; }
