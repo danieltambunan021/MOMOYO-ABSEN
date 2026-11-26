@@ -1,17 +1,32 @@
 /**
  * ============================================================
- * MOMOYO ABSENSI — FRONTEND APPLICATION v2.1 (PWA)
+ * MOMOYO ABSENSI — FRONTEND APPLICATION v3.0 (PWA)
  * ============================================================
- * URL Web App Apps Script sudah terpasang di baris ke-8.
- * Fitur v2.1: Tema/Wallpaper Global, Kalender Crew, Detail Toko,
- * Profil Crew (Read-Only untuk Crew, Full Edit hanya Admin), Shift Full Day, Current PIN.
+ * URL Web App Apps Script sudah terpasang di baris ke-9.
+ * Fitur v3.0: Profil Admin Lengkap + Crop/Zoom ala Sosmed,
+ * Crew Ganti Foto Profil (Replace), Ucapan Dinamis (Editable Admin),
+ * Absen Istirahat + Countdown Real-Time per Toko, Bar DETAILS Kalender Crew,
+ * Mode Monitoring Tanpa Login (Read-Only + Galeri Foto), & Jadwal Shift per Toko.
  */
 const API_URL = 'https://script.google.com/macros/s/AKfycbyrbl6vBqA1uatZYi2kEn6gv5AxwrB4LEnmEIwh5NW0DwCowh0so6uZOIbzV3F8wVeg/exec';
 
 const HARI_ID = ['MINGGU', 'SENIN', 'SELASA', 'RABU', 'KAMIS', 'JUMAT', 'SABTU'];
+const HARI_SHORT = ['Min', 'Sen', 'Sel', 'Rab', 'Kam', 'Jum', 'Sab'];
 const BULAN_ID = [
   'JANUARI', 'FEBRUARI', 'MARET', 'APRIL', 'MEI', 'JUNI',
   'JULI', 'AGUSTUS', 'SEPTEMBER', 'OKTOBER', 'NOVEMBER', 'DESEMBER'
+];
+const VALID_WORK_SHIFTS = ['PAGI', 'SIANG', 'FULL DAY', 'FULL PAGI', 'FULL SIANG'];
+const JADWAL_PRESET_OPTIONS = [
+  { val: '', label: '-' },
+  { val: 'PAGI', label: 'PAGI' },
+  { val: 'SIANG', label: 'SIANG' },
+  { val: 'FULL DAY', label: 'FULL DAY' },
+  { val: 'FULL PAGI', label: 'FULL PAGI' },
+  { val: 'FULL SIANG', label: 'FULL SIANG' },
+  { val: 'OFF DAY', label: 'OFF DAY' },
+  { val: 'OUT', label: 'OUT' },
+  { val: '__CUSTOM__', label: '+ BKO / Lainnya...' }
 ];
 
 const THEME_META = {
@@ -23,12 +38,20 @@ const THEME_META = {
   custom: { color: '#E11D48', icon: '✨' }
 };
 
+const DEFAULT_GREETINGS = {
+  masuk: 'SELAMAT BEKERJA',
+  istirahat: 'SELAMAT ISTIRAHAT',
+  pulang: 'PEKERJAAN SELESAI, HATI HATI DI JALAN'
+};
+
 const nowInit = new Date();
 
 const state = {
   token: localStorage.getItem('momoyo_token') || '',
   user: JSON.parse(localStorage.getItem('momoyo_user') || 'null'),
   theme: JSON.parse(localStorage.getItem('momoyo_theme') || '{"preset":"default","bannerText":"","customBgUrl":""}'),
+  greetings: JSON.parse(localStorage.getItem('momoyo_greetings') || JSON.stringify(DEFAULT_GREETINGS)),
+  todaySchedule: null,
   publicStores: [],
   publicCrews: [],
   stores: [],
@@ -38,13 +61,34 @@ const state = {
   lastRecap: null,
   charts: { store: null, days: null },
   deferredInstallPrompt: null,
-  // State Kalender Crew
+  // Sinkronisasi jam server & istirahat live
+  serverOffsetMs: 0,
+  myBreak: null,
+  storeBreaks: [],
+  dashActiveBreaks: [],
+  // Riwayat & Galeri Foto
+  historyRecords: [],
+  historyMode: 'list', // 'list' | 'gallery'
+  // Kalender Crew Pribadi
   calYear: nowInit.getFullYear(),
   calMonth: nowInit.getMonth() + 1,
   calRecordsByDate: {},
+  calSchedulesByDate: {},
   calSelectedDate: '',
-  // State Detail Toko
+  // Modal Detail Toko & Modal DETAILS Kalender Crew
   activeStoreDetail: '',
+  adminCalTarget: null, // { nama, toko, posisi, area }
+  adminCalYear: nowInit.getFullYear(),
+  adminCalMonth: nowInit.getMonth() + 1,
+  adminCalRecordsByDate: {},
+  adminCalSchedulesByDate: {},
+  adminCalSelectedDate: '',
+  // Jadwal Shift Matrix per Toko
+  jadwalStore: '',
+  jadwalCrews: [],
+  jadwalMap: {}, // key: dateKey|crewId -> status
+  jadwalDirty: {}, // key: dateKey|crewId -> { dateKey, crewId, nama, status, catatan }
+  jadwalBkoPending: null,
   // Draft Upload Foto Crew (Admin Modal)
   crewPhotoDraft: '',
   crewClearPhoto: false,
@@ -52,6 +96,19 @@ const state = {
   themeDraftPreset: 'default',
   themeWallpaperDraft: '',
   themeClearWallpaper: false
+};
+
+// State Crop & Zoom Foto Profil
+const cropper = {
+  img: null,
+  baseScale: 1,
+  zoom: 1,
+  offsetX: 0,
+  offsetY: 0,
+  dragging: false,
+  startX: 0,
+  startY: 0,
+  onDone: null
 };
 
 /* ======================== INISIALISASI ======================== */
@@ -63,10 +120,16 @@ document.addEventListener('DOMContentLoaded', () => {
   initOfflineIndicator();
   initClock();
   bindEvents();
+  initCropperEvents();
   initMonthYearSelectors();
 
-  if (state.token && state.user) {
+  const params = new URLSearchParams(window.location.search);
+  const wantMonitor = params.has('monitoring') || window.location.hash === '#monitoring';
+
+  if (state.token && state.user && state.user.role !== 'MONITORING') {
     enterApp();
+  } else if (wantMonitor) {
+    enterMonitoringMode();
   } else {
     loadPublicInit();
   }
@@ -108,22 +171,25 @@ function initOfflineIndicator() {
 
 function initClock() {
   const render = () => {
-    const now = new Date();
+    const now = new Date(Date.now() + state.serverOffsetMs);
     const hari = HARI_ID[now.getDay()];
     const tgl = now.getDate();
     const bln = BULAN_ID[now.getMonth()];
     const thn = now.getFullYear();
-    const jam = now.toTimeString().slice(0, 8);
+    const jam = `${pad2(now.getHours())}:${pad2(now.getMinutes())}:${pad2(now.getSeconds())}`;
+
     const dateEl = document.getElementById('liveDate');
     const clockEl = document.getElementById('liveClock');
     if (dateEl) dateEl.textContent = `${hari}, ${tgl} ${bln} ${thn}`;
     if (clockEl) clockEl.textContent = jam;
+
+    tickAllBreakCountdowns();
   };
   render();
   setInterval(render, 1000);
 }
 
-/* ======================== TEMA & WALLPAPER GLOBAL ======================== */
+/* ======================== TEMA, WALLPAPER & UCAPAN DINAMIS ======================== */
 
 function applyAppTheme(themeObj) {
   if (!themeObj) return;
@@ -158,6 +224,55 @@ function applyAppTheme(themeObj) {
     } else {
       bannerEl.classList.add('hidden');
     }
+  }
+}
+
+function applyGreetings(gObj) {
+  if (!gObj) return;
+  state.greetings = {
+    masuk: String(gObj.masuk || DEFAULT_GREETINGS.masuk).trim(),
+    istirahat: String(gObj.istirahat || DEFAULT_GREETINGS.istirahat).trim(),
+    pulang: String(gObj.pulang || DEFAULT_GREETINGS.pulang).trim()
+  };
+  localStorage.setItem('momoyo_greetings', JSON.stringify(state.greetings));
+  updateAbsenGreetingDisplay();
+  syncGreetingInputs();
+}
+
+function updateAbsenGreetingDisplay() {
+  const el = document.getElementById('absenGreetingText');
+  if (!el) return;
+  const jenis = (document.getElementById('absenJenis')?.value || 'MASUK').toUpperCase();
+  if (jenis === 'ISTIRAHAT') el.textContent = state.greetings.istirahat || DEFAULT_GREETINGS.istirahat;
+  else if (jenis === 'PULANG') el.textContent = state.greetings.pulang || DEFAULT_GREETINGS.pulang;
+  else el.textContent = state.greetings.masuk || DEFAULT_GREETINGS.masuk;
+}
+
+function syncGreetingInputs() {
+  const m = document.getElementById('greetMasukInput');
+  const i = document.getElementById('greetIstirahatInput');
+  const p = document.getElementById('greetPulangInput');
+  if (m) m.value = state.greetings.masuk || DEFAULT_GREETINGS.masuk;
+  if (i) i.value = state.greetings.istirahat || DEFAULT_GREETINGS.istirahat;
+  if (p) p.value = state.greetings.pulang || DEFAULT_GREETINGS.pulang;
+}
+
+async function saveAbsenGreetings(e) {
+  e.preventDefault();
+  setLoading(true, 'Menyimpan teks ucapan...');
+  try {
+    const res = await apiCall({
+      action: 'saveAbsenGreetings',
+      masuk: document.getElementById('greetMasukInput').value.trim(),
+      istirahat: document.getElementById('greetIstirahatInput').value.trim(),
+      pulang: document.getElementById('greetPulangInput').value.trim()
+    });
+    applyGreetings(res.greetings);
+    showToast(res.message || 'Teks ucapan diperbarui!', 'success');
+  } catch (err) {
+    showToast(err.message, 'error');
+  } finally {
+    setLoading(false);
   }
 }
 
@@ -252,6 +367,8 @@ async function apiCall(payload, timeoutMs = 35000) {
     }
 
     if (data.theme) applyAppTheme(data.theme);
+    if (data.greetings) applyGreetings(data.greetings);
+    if (data.serverNowMs) state.serverOffsetMs = data.serverNowMs - Date.now();
 
     if (data.code === 'SESSION_EXPIRED') {
       handleForceLogout(data.message);
@@ -271,14 +388,14 @@ async function apiCall(payload, timeoutMs = 35000) {
   }
 }
 
-/* ======================== AUTH & LOGIN ======================== */
+/* ======================== AUTH, LOGIN & MODE MONITORING ======================== */
 
 async function loadPublicInit() {
   try {
     const res = await apiCall({ action: 'getPublicInit' });
     state.publicStores = res.stores || [];
     state.publicCrews = res.crews || [];
-    if (res.theme) applyAppTheme(res.theme);
+    if (res.stores) state.stores = res.stores;
 
     const storeSelect = document.getElementById('loginStore');
     storeSelect.innerHTML = '<option value="">-- Pilih Cabang Toko --</option>' +
@@ -315,6 +432,7 @@ async function handleLoginCrew(e) {
   setLoading(true, 'Memverifikasi PIN...');
   try {
     const res = await apiCall({ action: 'login', role: 'CREW', crewId, pin });
+    state.todaySchedule = res.todaySchedule || null;
     saveSession(res.token, res.user, res.stores);
     document.getElementById('loginPin').value = '';
     enterApp();
@@ -333,6 +451,7 @@ async function handleLoginAdmin(e) {
   setLoading(true, 'Masuk sebagai Admin...');
   try {
     const res = await apiCall({ action: 'login', role: 'ADMIN', password });
+    state.todaySchedule = null;
     saveSession(res.token, res.user, res.stores);
     document.getElementById('loginAdminPass').value = '';
     enterApp();
@@ -341,6 +460,20 @@ async function handleLoginAdmin(e) {
   } finally {
     setLoading(false);
   }
+}
+
+function enterMonitoringMode() {
+  state.token = '';
+  state.user = {
+    role: 'MONITORING',
+    crewId: 'MONITOR',
+    nama: 'Monitoring MOMOYO',
+    toko: 'SEMUA',
+    posisi: 'Mode Pantau (Read-Only)',
+    fotoProfil: ''
+  };
+  state.todaySchedule = null;
+  enterApp();
 }
 
 function saveSession(token, user, stores) {
@@ -353,6 +486,10 @@ function saveSession(token, user, stores) {
 }
 
 async function handleLogout() {
+  if (state.user && state.user.role === 'MONITORING') {
+    handleForceLogout('');
+    return;
+  }
   try { await apiCall({ action: 'logout' }); } catch {}
   handleForceLogout('Berhasil keluar.');
 }
@@ -360,6 +497,8 @@ async function handleLogout() {
 function handleForceLogout(msg) {
   state.token = '';
   state.user = null;
+  state.todaySchedule = null;
+  state.myBreak = null;
   localStorage.removeItem('momoyo_token');
   localStorage.removeItem('momoyo_user');
   document.getElementById('appShell').classList.add('hidden');
@@ -372,35 +511,44 @@ function handleForceLogout(msg) {
 
 function enterApp() {
   state.stores = state.stores.length ? state.stores : JSON.parse(localStorage.getItem('momoyo_stores') || '[]');
-  const isAdmin = state.user.role === 'ADMIN';
+  const role = state.user.role;
+  const isAdmin = role === 'ADMIN';
+  const isMonitor = role === 'MONITORING';
 
   document.getElementById('loginView').classList.add('hidden');
   document.getElementById('appShell').classList.remove('hidden');
 
   renderHeaderUser();
+  document.getElementById('btnLogout').textContent = isMonitor ? 'Login' : 'Keluar';
 
   document.querySelectorAll('.admin-only').forEach((el) => {
     el.classList.toggle('hidden', !isAdmin);
   });
 
-  setupAbsenForm();
-  buildBottomNav(isAdmin);
-  refreshMyProfileSilently();
+  populateFilterStores();
+  buildBottomNav(role);
 
   if (isAdmin) {
-    populateFilterStores();
+    setupAbsenForm();
+    refreshMyProfileSilently();
+    switchView('viewDashboard');
+  } else if (isMonitor) {
     switchView('viewDashboard');
   } else {
+    setupAbsenForm();
+    refreshMyProfileSilently();
     switchView('viewAbsen');
   }
 }
 
 function renderHeaderUser() {
-  const isAdmin = state.user.role === 'ADMIN';
+  const role = state.user.role;
   renderAvatar(document.getElementById('headerAvatar'), state.user.fotoProfil, state.user.nama);
   document.getElementById('headerName').textContent = state.user.nama;
-  if (isAdmin) {
-    document.getElementById('headerRoleStore').textContent = 'Administrator • Semua Cabang';
+  if (role === 'ADMIN') {
+    document.getElementById('headerRoleStore').textContent = `${state.user.posisi || 'Administrasi'} • Semua Cabang`;
+  } else if (role === 'MONITORING') {
+    document.getElementById('headerRoleStore').textContent = 'Pantauan Live • Hanya Lihat';
   } else {
     const pos = state.user.posisi || 'Crew';
     const areaTxt = state.user.area ? ` • ${state.user.area}` : '';
@@ -419,6 +567,7 @@ function renderAvatar(el, fotoUrl, nama) {
 }
 
 async function refreshMyProfileSilently() {
+  if (!state.user || state.user.role === 'MONITORING') return;
   try {
     const res = await apiCall({ action: 'getMyProfile' });
     if (res.user) {
@@ -426,10 +575,19 @@ async function refreshMyProfileSilently() {
       localStorage.setItem('momoyo_user', JSON.stringify(res.user));
       renderHeaderUser();
     }
+    if (res.todaySchedule !== undefined) {
+      state.todaySchedule = res.todaySchedule;
+      applyTodayScheduleToForm();
+    }
   } catch {}
 }
 
 async function openProfileModal() {
+  if (!state.user || state.user.role === 'MONITORING') {
+    showToast('Mode Monitoring hanya untuk memantau (Read-Only).');
+    return;
+  }
+
   await refreshMyProfileSilently();
   const u = state.user;
   const isAdmin = u.role === 'ADMIN';
@@ -437,16 +595,24 @@ async function openProfileModal() {
   renderAvatar(document.getElementById('profileAvatarLg'), u.fotoProfil, u.nama);
   document.getElementById('profileNameLg').textContent = u.nama;
   document.getElementById('profileSubLg').textContent = isAdmin
-    ? 'Administrator MOMOYO'
+    ? `${u.posisi || 'Administrasi'} • Semua Cabang`
     : `${u.posisi || 'CREW'} • ${u.toko}`;
 
   const detailEl = document.getElementById('profileDetails');
+  const formAdmin = document.getElementById('formAdminProfile');
+  const crewNote = document.getElementById('crewProfileReadOnlyNote');
+
   if (isAdmin) {
-    detailEl.innerHTML = `
-      <div class="detail-row"><span>Peran</span><strong>Admin (Akses Penuh)</strong></div>
-      <div class="detail-row"><span>Cakupan</span><strong>Semua Cabang Toko</strong></div>
-    `;
+    detailEl.classList.add('hidden');
+    crewNote.classList.add('hidden');
+    formAdmin.classList.remove('hidden');
+    document.getElementById('adminProfNama').value = u.nama || 'Admin MOMOYO';
+    document.getElementById('adminProfPosisi').value = u.posisi || 'Administrasi';
+    document.getElementById('adminProfTelp').value = u.noTelp || '';
   } else {
+    formAdmin.classList.add('hidden');
+    detailEl.classList.remove('hidden');
+    crewNote.classList.remove('hidden');
     detailEl.innerHTML = `
       <div class="detail-row"><span>ID Crew</span><strong>${esc(u.crewId || '-')}</strong></div>
       <div class="detail-row"><span>Cabang Toko</span><strong>${esc(u.toko || '-')}</strong></div>
@@ -457,36 +623,70 @@ async function openProfileModal() {
     `;
   }
 
-  document.getElementById('adminProfileEditBox').classList.toggle('hidden', !isAdmin);
-  document.getElementById('crewProfileReadOnlyNote').classList.toggle('hidden', isAdmin);
   openModal('modalProfile');
 }
 
-function handleAdminPhotoPick(e) {
+async function submitAdminProfileForm(e) {
+  e.preventDefault();
+  setLoading(true, 'Menyimpan profil Admin...');
+  try {
+    const res = await apiCall({
+      action: 'updateAdminProfile',
+      nama: document.getElementById('adminProfNama').value.trim(),
+      posisi: document.getElementById('adminProfPosisi').value.trim(),
+      noTelp: document.getElementById('adminProfTelp').value.trim()
+    });
+    if (res.user) {
+      state.user = res.user;
+      localStorage.setItem('momoyo_user', JSON.stringify(res.user));
+      renderHeaderUser();
+      document.getElementById('profileNameLg').textContent = res.user.nama;
+      document.getElementById('profileSubLg').textContent = `${res.user.posisi || 'Administrasi'} • Semua Cabang`;
+    }
+    showToast(res.message || 'Profil Admin diperbarui!', 'success');
+  } catch (err) {
+    showToast(err.message, 'error');
+  } finally {
+    setLoading(false);
+  }
+}
+
+function handleMyPhotoPick(e) {
   const file = e.target.files && e.target.files[0];
+  e.target.value = '';
   if (!file) return;
-  setLoading(true, 'Mengunggah foto profil Admin...');
-  compressImage(file, 450, 0.8)
-    .then(({ base64 }) => apiCall({ action: 'updateAdminProfile', photoBase64: base64 }))
-    .then((res) => {
-      state.user.fotoProfil = res.fotoProfil || '';
+  if (!file.type.startsWith('image/')) return showToast('Pilih file gambar.', 'error');
+
+  openCropModalForFile(file, async (croppedBase64) => {
+    setLoading(true, 'Mengunggah foto profil...');
+    try {
+      const res = await apiCall({
+        action: 'updateMyPhoto',
+        photoBase64: croppedBase64
+      }, 45000);
+      if (res.user) {
+        state.user = res.user;
+      } else {
+        state.user.fotoProfil = res.fotoProfil || '';
+      }
       localStorage.setItem('momoyo_user', JSON.stringify(state.user));
       renderHeaderUser();
       renderAvatar(document.getElementById('profileAvatarLg'), state.user.fotoProfil, state.user.nama);
-      showToast('Foto profil Admin diperbarui!', 'success');
-    })
-    .catch((err) => showToast(err.message, 'error'))
-    .finally(() => {
+      showToast(res.message || 'Foto profil diperbarui!', 'success');
+    } catch (err) {
+      showToast(err.message, 'error');
+    } finally {
       setLoading(false);
-      e.target.value = '';
-    });
+    }
+  });
 }
 
-async function clearAdminPhoto() {
+async function clearMyPhoto() {
   setLoading(true, 'Menghapus foto profil...');
   try {
-    await apiCall({ action: 'updateAdminProfile', clearPhoto: true });
+    const res = await apiCall({ action: 'updateMyPhoto', clearPhoto: true });
     state.user.fotoProfil = '';
+    if (res.user) state.user = res.user;
     localStorage.setItem('momoyo_user', JSON.stringify(state.user));
     renderHeaderUser();
     renderAvatar(document.getElementById('profileAvatarLg'), '', state.user.nama);
@@ -498,20 +698,160 @@ async function clearAdminPhoto() {
   }
 }
 
-function buildBottomNav(isAdmin) {
+/* ======================== CROP & ZOOM FOTO PROFIL (ALA SOSMED) ======================== */
+
+function openCropModalForFile(file, onDone) {
+  const reader = new FileReader();
+  reader.onload = (ev) => {
+    const img = new Image();
+    img.onload = () => {
+      const canvasSize = 320;
+      const baseScale = Math.max(canvasSize / img.width, canvasSize / img.height);
+      cropper.img = img;
+      cropper.baseScale = baseScale;
+      cropper.zoom = 1;
+      cropper.offsetX = 0;
+      cropper.offsetY = 0;
+      cropper.onDone = onDone;
+
+      const slider = document.getElementById('cropZoomSlider');
+      slider.value = '1';
+      document.getElementById('cropZoomVal').textContent = '1.0x';
+      drawCropCanvas();
+      openModal('modalCropPhoto');
+    };
+    img.onerror = () => showToast('Gagal memuat gambar.', 'error');
+    img.src = ev.target.result;
+  };
+  reader.readAsDataURL(file);
+}
+
+function clampCropOffsets() {
+  if (!cropper.img) return;
+  const size = 320;
+  const drawW = cropper.img.width * cropper.baseScale * cropper.zoom;
+  const drawH = cropper.img.height * cropper.baseScale * cropper.zoom;
+  const maxX = Math.max(0, (drawW - size) / 2);
+  const maxY = Math.max(0, (drawH - size) / 2);
+  cropper.offsetX = Math.max(-maxX, Math.min(maxX, cropper.offsetX));
+  cropper.offsetY = Math.max(-maxY, Math.min(maxY, cropper.offsetY));
+}
+
+function drawCropCanvas() {
+  const canvas = document.getElementById('cropCanvas');
+  if (!canvas || !cropper.img) return;
+  clampCropOffsets();
+  const ctx = canvas.getContext('2d');
+  const size = canvas.width;
+  ctx.clearRect(0, 0, size, size);
+  ctx.fillStyle = '#0F172A';
+  ctx.fillRect(0, 0, size, size);
+
+  const drawW = cropper.img.width * cropper.baseScale * cropper.zoom;
+  const drawH = cropper.img.height * cropper.baseScale * cropper.zoom;
+  const x = (size - drawW) / 2 + cropper.offsetX;
+  const y = (size - drawH) / 2 + cropper.offsetY;
+  ctx.drawImage(cropper.img, x, y, drawW, drawH);
+}
+
+function exportCroppedBase64() {
+  const out = document.createElement('canvas');
+  out.width = 400;
+  out.height = 400;
+  const ctx = out.getContext('2d');
+  const ratio = out.width / 320;
+  const drawW = cropper.img.width * cropper.baseScale * cropper.zoom * ratio;
+  const drawH = cropper.img.height * cropper.baseScale * cropper.zoom * ratio;
+  const x = (out.width - drawW) / 2 + cropper.offsetX * ratio;
+  const y = (out.height - drawH) / 2 + cropper.offsetY * ratio;
+  ctx.fillStyle = '#FFFFFF';
+  ctx.fillRect(0, 0, out.width, out.height);
+  ctx.drawImage(cropper.img, x, y, drawW, drawH);
+  return out.toDataURL('image/jpeg', 0.85);
+}
+
+function initCropperEvents() {
+  const stage = document.getElementById('cropStage');
+  const slider = document.getElementById('cropZoomSlider');
+
+  stage.addEventListener('pointerdown', (e) => {
+    if (!cropper.img) return;
+    cropper.dragging = true;
+    cropper.startX = e.clientX;
+    cropper.startY = e.clientY;
+    stage.setPointerCapture(e.pointerId);
+  });
+
+  stage.addEventListener('pointermove', (e) => {
+    if (!cropper.dragging) return;
+    const rect = stage.getBoundingClientRect();
+    const scaleFactor = 320 / rect.width;
+    cropper.offsetX += (e.clientX - cropper.startX) * scaleFactor;
+    cropper.offsetY += (e.clientY - cropper.startY) * scaleFactor;
+    cropper.startX = e.clientX;
+    cropper.startY = e.clientY;
+    drawCropCanvas();
+  });
+
+  const endDrag = () => { cropper.dragging = false; };
+  stage.addEventListener('pointerup', endDrag);
+  stage.addEventListener('pointercancel', endDrag);
+
+  slider.addEventListener('input', () => {
+    cropper.zoom = parseFloat(slider.value) || 1;
+    document.getElementById('cropZoomVal').textContent = `${cropper.zoom.toFixed(1)}x`;
+    drawCropCanvas();
+  });
+
+  const cancelCrop = () => {
+    closeModal('modalCropPhoto');
+    cropper.img = null;
+    cropper.onDone = null;
+  };
+  document.getElementById('btnCancelCrop').addEventListener('click', cancelCrop);
+  document.getElementById('btnCropCancelBtn').addEventListener('click', cancelCrop);
+
+  document.getElementById('btnCropApply').addEventListener('click', () => {
+    if (!cropper.img) return;
+    const b64 = exportCroppedBase64();
+    const cb = cropper.onDone;
+    closeModal('modalCropPhoto');
+    cropper.img = null;
+    cropper.onDone = null;
+    if (cb) cb(b64);
+  });
+}
+
+/* ======================== NAVIGASI BAWAH ======================== */
+
+function buildBottomNav(role) {
   const nav = document.getElementById('bottomNav');
-  const items = isAdmin
-    ? [
-        { view: 'viewDashboard', icon: '📊', label: 'Dashboard' },
-        { view: 'viewRiwayat', icon: '📋', label: 'Riwayat' },
-        { view: 'viewAbsen', icon: '📸', label: 'Absen', center: true },
-        { view: 'viewInsight', icon: '📈', label: 'Insight' },
-        { view: 'viewKelola', icon: '⚙️', label: 'Kelola' }
-      ]
-    : [
-        { view: 'viewRiwayat', icon: '📅', label: 'Kalender Saya' },
-        { view: 'viewAbsen', icon: '📸', label: 'Absen Sekarang', center: true }
-      ];
+  let items;
+  if (role === 'ADMIN') {
+    items = [
+      { view: 'viewDashboard', icon: '📊', label: 'Dashboard' },
+      { view: 'viewJadwal', icon: '🗓️', label: 'Jadwal' },
+      { view: 'viewAbsen', icon: '📸', label: 'Absen', center: true },
+      { view: 'viewRiwayat', icon: '📋', label: 'Riwayat' },
+      { view: 'viewKelola', icon: '⚙️', label: 'Kelola' }
+    ];
+  } else if (role === 'MONITORING') {
+    items = [
+      { view: 'viewDashboard', icon: '📊', label: 'Live' },
+      { view: 'viewJadwal', icon: '🗓️', label: 'Jadwal' },
+      { view: 'viewRiwayat', icon: '🖼️', label: 'Riwayat & Foto' },
+      { view: 'viewInsight', icon: '📈', label: 'Insight' }
+    ];
+  } else {
+    // CREW
+    items = [
+      { view: 'viewKalenderSaya', icon: '📅', label: 'Kalender' },
+      { view: 'viewJadwal', icon: '🗓️', label: 'Jadwal' },
+      { view: 'viewAbsen', icon: '📸', label: 'Absen', center: true },
+      { view: 'viewDashboard', icon: '👁️', label: 'Pantau' },
+      { view: 'viewRiwayat', icon: '🖼️', label: 'Galeri' }
+    ];
+  }
 
   nav.innerHTML = items.map((it) => `
     <button type="button" class="nav-item ${it.center ? 'nav-center' : ''}" data-view="${it.view}">
@@ -530,20 +870,25 @@ function switchView(viewId) {
   const target = document.getElementById(viewId);
   if (target) target.classList.remove('hidden');
 
+  const navHighlight = viewId === 'viewInsight' && state.user.role !== 'MONITORING' ? 'viewDashboard' : viewId;
   document.querySelectorAll('#bottomNav .nav-item').forEach((btn) => {
-    btn.classList.toggle('active', btn.dataset.view === viewId);
+    btn.classList.toggle('active', btn.dataset.view === navHighlight);
   });
 
-  if (viewId === 'viewRiwayat') {
-    if (state.user.role === 'ADMIN') loadHistory();
-    else loadCrewCalendar();
+  if (viewId === 'viewAbsen') {
+    updateAbsenGreetingDisplay();
+    applyTodayScheduleToForm();
+    loadActiveBreaksForAbsen();
   }
+  if (viewId === 'viewKalenderSaya') loadCrewCalendar();
+  if (viewId === 'viewRiwayat') loadHistory();
   if (viewId === 'viewDashboard') loadDashboard();
+  if (viewId === 'viewJadwal') loadJadwalView();
   if (viewId === 'viewInsight') loadInsights();
   if (viewId === 'viewKelola') loadMasterData();
 }
 
-/* ======================== FORM ABSENSI & KOMPRESI FOTO ======================== */
+/* ======================== FORM ABSENSI, JADWAL HARI INI & ISTIRAHAT ======================== */
 
 function setupAbsenForm() {
   const isAdmin = state.user.role === 'ADMIN';
@@ -566,14 +911,59 @@ function setupAbsenForm() {
   updateShiftOptionLabels();
 
   const defShift = normalizeShift(state.user.shiftDefault || '');
-  if (defShift === 'FULL DAY') {
-    shiftSel.value = 'FULL DAY';
+  if (VALID_WORK_SHIFTS.includes(defShift) && defShift !== 'PAGI' && defShift !== 'SIANG') {
+    shiftSel.value = defShift;
   } else {
     const hour = new Date().getHours();
     shiftSel.value = hour < 13 ? 'PAGI' : 'SIANG';
   }
 
+  applyTodayScheduleToForm();
+  updateAbsenGreetingDisplay();
   updateGpsHint();
+}
+
+function applyTodayScheduleToForm() {
+  const banner = document.getElementById('todayScheduleBanner');
+  const valEl = document.getElementById('todayScheduleValue');
+  const badgeEl = document.getElementById('todayScheduleBadge');
+  const shiftSel = document.getElementById('absenShift');
+  const lockBadge = document.getElementById('shiftLockBadge');
+
+  if (!state.user || state.user.role !== 'CREW' || !state.todaySchedule || !state.todaySchedule.status) {
+    banner.classList.add('hidden');
+    lockBadge.classList.add('hidden');
+    shiftSel.disabled = false;
+    return;
+  }
+
+  const sched = state.todaySchedule;
+  const st = normalizeShift(sched.status);
+  const displayStatus = sched.catatan ? `${sched.status} (${sched.catatan})` : sched.status;
+
+  banner.classList.remove('hidden');
+  valEl.textContent = displayStatus;
+
+  if (VALID_WORK_SHIFTS.includes(st)) {
+    banner.classList.remove('is-off');
+    badgeEl.className = 'badge badge-masuk';
+    badgeEl.textContent = 'SHIFT HARI INI';
+    shiftSel.value = st;
+    shiftSel.disabled = true;
+    lockBadge.classList.remove('hidden');
+  } else if (st === 'OFF DAY' || st === 'OUT') {
+    banner.classList.add('is-off');
+    badgeEl.className = 'badge badge-danger';
+    badgeEl.textContent = st;
+    shiftSel.disabled = false;
+    lockBadge.classList.add('hidden');
+  } else {
+    banner.classList.remove('is-off');
+    badgeEl.className = 'badge badge-warning';
+    badgeEl.textContent = 'KHUSUS';
+    shiftSel.disabled = false;
+    lockBadge.classList.add('hidden');
+  }
 }
 
 function updateShiftOptionLabels() {
@@ -589,8 +979,10 @@ function updateShiftOptionLabels() {
     <option value="PAGI">Shift Pagi (${pagi})</option>
     <option value="SIANG">Shift Siang (${siang})</option>
     <option value="FULL DAY">Full Day (${fd})</option>
+    <option value="FULL PAGI">Full Pagi (Istirahat 1,5 jam)</option>
+    <option value="FULL SIANG">Full Siang (Istirahat 1,5 jam)</option>
   `;
-  shiftSel.value = prev;
+  shiftSel.value = VALID_WORK_SHIFTS.includes(prev) ? prev : 'PAGI';
 }
 
 function updateGpsHint() {
@@ -603,6 +995,97 @@ function updateGpsHint() {
   } else {
     box.classList.add('hidden');
   }
+}
+
+async function loadActiveBreaksForAbsen() {
+  if (!state.user || state.user.role === 'MONITORING') return;
+  const toko = document.getElementById('absenToko').value || state.user.toko;
+  try {
+    const res = await apiCall({ action: 'getActiveBreaks', toko });
+    state.myBreak = res.myBreak || null;
+    state.storeBreaks = res.breaks || [];
+    renderStoreBreaksCard(res.toko || toko);
+    tickAllBreakCountdowns();
+  } catch {}
+}
+
+function renderStoreBreaksCard(tokoName) {
+  const card = document.getElementById('storeBreaksCard');
+  const listEl = document.getElementById('storeBreaksList');
+  document.getElementById('storeBreaksTitle').textContent = tokoName || 'Outlet';
+
+  if (!state.storeBreaks.length) {
+    card.classList.add('hidden');
+    return;
+  }
+  card.classList.remove('hidden');
+  listEl.innerHTML = state.storeBreaks.map((b) => `
+    <div class="mini-item">
+      <div>
+        <strong>${esc(b.nama)}</strong> <span class="record-sub">(${esc(b.shift)})</span>
+        <div class="record-sub">Mulai ${esc(b.startJam)} • Selesai ${esc(b.endJam)} WIB</div>
+      </div>
+      <span class="badge ${b.isOngoing ? 'badge-warning' : 'badge-masuk'} live-break-badge" data-end-ms="${b.endMs}">
+        ${b.isOngoing ? formatRemainingMs(b.endMs - (Date.now() + state.serverOffsetMs)) : 'Selesai'}
+      </span>
+    </div>
+  `).join('');
+}
+
+function tickAllBreakCountdowns() {
+  const nowMs = Date.now() + state.serverOffsetMs;
+
+  // 1. Kartu Countdown Pribadi (layar Absen)
+  const myCard = document.getElementById('myBreakCountdownCard');
+  if (myCard) {
+    if (state.myBreak && state.user && state.user.role !== 'MONITORING') {
+      const rem = state.myBreak.endMs - nowMs;
+      const doneTooLong = rem < -60 * 60000; // sembunyikan jika sudah selesai > 1 jam lalu
+      if (doneTooLong) {
+        myCard.classList.add('hidden');
+      } else {
+        myCard.classList.remove('hidden');
+        document.getElementById('myBreakEndLabel').textContent = `Batas kembali: ${state.myBreak.endJam} WIB`;
+        if (rem > 0) {
+          myCard.classList.remove('is-done');
+          document.getElementById('myBreakTimer').textContent = formatRemainingMs(rem);
+          document.getElementById('myBreakSubInfo').textContent = rem <= 10 * 60000
+            ? 'Kurang dari 10 menit lagi! Bersiap kembali bertugas.'
+            : `Durasi ${state.myBreak.durationMin === 90 ? '1 jam 30 menit' : '1 jam'} (Mulai ${state.myBreak.startJam} WIB)`;
+        } else {
+          myCard.classList.add('is-done');
+          document.getElementById('myBreakTimer').textContent = '00:00:00';
+          document.getElementById('myBreakSubInfo').textContent = 'Waktu istirahat selesai! Silakan kembali bertugas agar rekan lain bisa bergantian.';
+        }
+      }
+    } else {
+      myCard.classList.add('hidden');
+    }
+  }
+
+  // 2. Semua badge countdown di Status Istirahat Toko & Dashboard
+  document.querySelectorAll('.live-break-badge[data-end-ms]').forEach((badge) => {
+    const endMs = Number(badge.dataset.endMs);
+    if (!endMs) return;
+    const rem = endMs - nowMs;
+    if (rem > 0) {
+      badge.textContent = `Sisa ${formatRemainingMs(rem)}`;
+      badge.classList.remove('badge-masuk');
+      badge.classList.add('badge-warning');
+    } else {
+      badge.textContent = 'Selesai';
+      badge.classList.remove('badge-warning');
+      badge.classList.add('badge-masuk');
+    }
+  });
+}
+
+function formatRemainingMs(ms) {
+  const totalSec = Math.max(0, Math.floor(ms / 1000));
+  const h = Math.floor(totalSec / 3600);
+  const m = Math.floor((totalSec % 3600) / 60);
+  const s = totalSec % 60;
+  return `${pad2(h)}:${pad2(m)}:${pad2(s)}`;
 }
 
 function handlePhotoSelected(e) {
@@ -730,9 +1213,14 @@ async function submitAttendance(e) {
       <div class="detail-row"><span>Jam Server</span><strong>${esc(d.jam)} WIB</strong></div>
       <div class="detail-row"><span>Status</span><strong>${esc(d.status)}</strong></div>
       ${d.jenis === 'PULANG' ? `<div class="detail-row"><span>Total Jam Kerja</span><strong>${esc(d.totalJamKerja)}</strong></div>` : ''}
+      ${d.breakInfo ? `<div class="detail-row"><span>Selesai Istirahat</span><strong>${esc(d.breakInfo.endJam)} WIB</strong></div>` : ''}
     `;
     openModal('modalSuccess');
     clearPhoto();
+
+    if (d.jenis === 'ISTIRAHAT') {
+      loadActiveBreaksForAbsen();
+    }
   } catch (err) {
     document.getElementById('absenRetryMsg').textContent = err.message;
     document.getElementById('absenRetryBox').classList.remove('hidden');
@@ -742,76 +1230,40 @@ async function submitAttendance(e) {
   }
 }
 
-/* ======================== RIWAYAT CREW: MODE KALENDER 1 BULAN ======================== */
+/* ======================== KALENDER CREW PRIBADI & MODAL DETAILS ======================== */
 
-async function loadCrewCalendar() {
-  document.getElementById('riwayatPageTitle').textContent = 'Kalender Absensi Saya';
-  document.getElementById('crewCalendarContainer').classList.remove('hidden');
-  document.getElementById('adminHistoryContainer').classList.add('hidden');
+function buildCalendarMaps(records, schedules) {
+  const byDate = {};
+  (records || []).forEach((r) => {
+    if (!r.dateKey) return;
+    if (!byDate[r.dateKey]) byDate[r.dateKey] = [];
+    byDate[r.dateKey].push(r);
+  });
+  const schedByDate = {};
+  (schedules || []).forEach((s) => {
+    if (s.dateKey) schedByDate[s.dateKey] = s;
+  });
 
-  const y = state.calYear;
-  const m = state.calMonth;
-  const daysInMonth = new Date(y, m, 0).getDate();
-  const startDate = `${y}-${pad2(m)}-01`;
-  const endDate = `${y}-${pad2(m)}-${pad2(daysInMonth)}`;
-
-  document.getElementById('calMonthLabel').textContent = `${BULAN_ID[m - 1]} ${y}`;
-  document.getElementById('crewCalendarGrid').innerHTML = '<div class="empty-state" style="grid-column:1/-1">Memuat kalender...</div>';
-
-  try {
-    const res = await apiCall({ action: 'getHistory', filters: { startDate, endDate } });
-    const records = res.records || [];
-
-    const byDate = {};
-    records.forEach((r) => {
-      if (!r.dateKey) return;
-      if (!byDate[r.dateKey]) byDate[r.dateKey] = [];
-      byDate[r.dateKey].push(r);
-    });
-    state.calRecordsByDate = byDate;
-
-    // Hitung ringkasan bulan ini
-    let totalMasuk = 0;
-    let pagi = 0;
-    let siang = 0;
-    let fullDay = 0;
-    Object.keys(byDate).forEach((dk) => {
-      const masuk = byDate[dk].find((r) => r.jenis === 'MASUK');
-      if (masuk) {
-        totalMasuk++;
-        const sh = normalizeShift(masuk.shift);
-        if (sh === 'PAGI') pagi++;
-        else if (sh === 'SIANG') siang++;
-        else if (sh === 'FULL DAY') fullDay++;
-      }
-    });
-
-    document.getElementById('calTotalMasuk').textContent = `${totalMasuk} hari`;
-    document.getElementById('calTotalPagi').textContent = `${pagi}x`;
-    document.getElementById('calTotalSiang').textContent = `${siang}x`;
-    document.getElementById('calTotalFullDay').textContent = `${fullDay}x`;
-
-    renderCrewCalendarGrid(y, m, daysInMonth, byDate);
-
-    // Pilih otomatis hari ini (jika bulan ini) atau tanggal terakhir yang ada absen
-    const todayKey = `${nowInit.getFullYear()}-${pad2(nowInit.getMonth() + 1)}-${pad2(nowInit.getDate())}`;
-    const attendedKeys = Object.keys(byDate).sort();
-    if (todayKey.startsWith(`${y}-${pad2(m)}-`)) {
-      selectCrewCalendarDay(todayKey);
-    } else if (attendedKeys.length) {
-      selectCrewCalendarDay(attendedKeys[attendedKeys.length - 1]);
-    } else {
-      state.calSelectedDate = '';
-      document.getElementById('crewDayDetailTitle').textContent = `${BULAN_ID[m - 1]} ${y}`;
-      document.getElementById('crewDayDetailBody').innerHTML = '<p class="subtitle">Belum ada catatan absensi pada bulan ini.</p>';
+  let totalMasuk = 0;
+  let pagi = 0;
+  let siang = 0;
+  let fullDay = 0;
+  Object.keys(byDate).forEach((dk) => {
+    const masuk = byDate[dk].find((r) => r.jenis === 'MASUK');
+    if (masuk) {
+      totalMasuk++;
+      const sh = normalizeShift(masuk.shift);
+      if (sh === 'PAGI') pagi++;
+      else if (sh === 'SIANG') siang++;
+      else if (isFullDayShift(sh)) fullDay++;
     }
-  } catch (err) {
-    document.getElementById('crewCalendarGrid').innerHTML = `<div class="empty-state" style="grid-column:1/-1">${esc(err.message)}</div>`;
-  }
+  });
+  return { byDate, schedByDate, totalMasuk, pagi, siang, fullDay };
 }
 
-function renderCrewCalendarGrid(year, month, daysInMonth, byDate) {
-  const firstWeekday = new Date(year, month - 1, 1).getDay(); // 0=Min..6=Sab
+function renderCalendarGridInto(gridEl, year, month, byDate, schedByDate, selectedDate, onPickDate) {
+  const daysInMonth = new Date(year, month, 0).getDate();
+  const firstWeekday = new Date(year, month - 1, 1).getDay();
   const todayKey = `${nowInit.getFullYear()}-${pad2(nowInit.getMonth() + 1)}-${pad2(nowInit.getDate())}`;
   let html = '';
 
@@ -822,6 +1274,7 @@ function renderCrewCalendarGrid(year, month, daysInMonth, byDate) {
   for (let day = 1; day <= daysInMonth; day++) {
     const dk = `${year}-${pad2(month)}-${pad2(day)}`;
     const list = byDate[dk] || [];
+    const sched = schedByDate[dk] || null;
     const masuk = list.find((r) => r.jenis === 'MASUK');
     const pulang = list.find((r) => r.jenis === 'PULANG');
 
@@ -841,24 +1294,122 @@ function renderCrewCalendarGrid(year, month, daysInMonth, byDate) {
     } else if (pulang) {
       statusCls = 'has-warn';
       dotHtml = '<span class="cal-dot-row"><i class="dot dot-warn"></i></span>';
+    } else if (sched && (sched.status === 'OFF DAY' || sched.status === 'OUT')) {
+      statusCls = 'has-off';
+    } else if (sched) {
+      dotHtml = '<span class="cal-dot-row"><i class="dot dot-sched"></i></span>';
     }
 
+    const schedShort = sched ? shortScheduleLabel(sched.status) : '';
     const isToday = dk === todayKey ? 'today' : '';
-    const isSel = dk === state.calSelectedDate ? 'selected' : '';
+    const isSel = dk === selectedDate ? 'selected' : '';
 
     html += `
       <button type="button" class="cal-day ${statusCls} ${isToday} ${isSel}" data-date="${dk}">
         <span>${day}</span>
-        ${dotHtml}
+        ${schedShort ? `<span class="cal-sched-mini">${esc(schedShort)}</span>` : dotHtml}
       </button>
     `;
   }
 
-  const grid = document.getElementById('crewCalendarGrid');
-  grid.innerHTML = html;
-  grid.querySelectorAll('.cal-day[data-date]').forEach((btn) => {
-    btn.addEventListener('click', () => selectCrewCalendarDay(btn.dataset.date));
+  gridEl.innerHTML = html;
+  gridEl.querySelectorAll('.cal-day[data-date]').forEach((btn) => {
+    btn.addEventListener('click', () => onPickDate(btn.dataset.date));
   });
+}
+
+function renderCalendarDayDetailInto(titleEl, bodyEl, dateKey, list, sched, totalBulanIni) {
+  const parts = dateKey.split('-').map(Number);
+  const dtObj = new Date(parts[0], parts[1] - 1, parts[2]);
+  titleEl.textContent = `${HARI_ID[dtObj.getDay()]}, ${parts[2]} ${BULAN_ID[parts[1] - 1]} ${parts[0]}`;
+
+  const schedText = sched
+    ? (sched.catatan ? `${sched.status} (${sched.catatan})` : sched.status)
+    : 'Belum dijadwalkan';
+
+  if (!list || !list.length) {
+    bodyEl.innerHTML = `
+      <div class="day-detail-box">
+        <div class="detail-grid" style="margin-top:0;padding:0;background:transparent">
+          <div class="detail-row"><span>Jadwal</span><strong>${esc(schedText)}</strong></div>
+          <div class="detail-row"><span>Absensi</span><strong>Tidak ada catatan absensi</strong></div>
+          <div class="detail-row"><span>Total Masuk Bulan Ini</span><strong>${esc(totalBulanIni)}</strong></div>
+        </div>
+      </div>
+    `;
+    return;
+  }
+
+  const masuk = list.find((r) => r.jenis === 'MASUK') || null;
+  const istirahat = list.find((r) => r.jenis === 'ISTIRAHAT') || null;
+  const pulangList = list.filter((r) => r.jenis === 'PULANG');
+  const pulang = pulangList[pulangList.length - 1] || null;
+  const shiftLabel = (masuk && masuk.shift) || (istirahat && istirahat.shift) || (pulang && pulang.shift) || '-';
+
+  bodyEl.innerHTML = `
+    <div class="day-detail-box">
+      <div class="detail-grid" style="margin-top:0;padding:0;background:transparent">
+        <div class="detail-row"><span>Jadwal</span><strong>${esc(schedText)}</strong></div>
+        <div class="detail-row"><span>Shift Absen</span><strong>${esc(shiftLabel)}</strong></div>
+        <div class="detail-row"><span>Jam Masuk</span><strong>${masuk ? esc(masuk.jam) + ' WIB' : '-'}</strong></div>
+        <div class="detail-row"><span>Status Masuk</span><strong>${masuk ? esc(masuk.status) : '-'}</strong></div>
+        <div class="detail-row"><span>Jam Istirahat</span><strong>${istirahat ? esc(istirahat.jam) + ' WIB' : '-'}</strong></div>
+        ${istirahat ? `<div class="detail-row"><span>Info Istirahat</span><strong>${esc(istirahat.status)}</strong></div>` : ''}
+        <div class="detail-row"><span>Jam Keluar</span><strong>${pulang ? esc(pulang.jam) + ' WIB' : 'Belum absen pulang'}</strong></div>
+        <div class="detail-row"><span>Durasi Kerja</span><strong>${pulang ? esc(pulang.status) : '-'}</strong></div>
+        <div class="detail-row"><span>Total Masuk Bulan Ini</span><strong>${esc(totalBulanIni)}</strong></div>
+      </div>
+      <div class="photo-btn-row photo-btn-row-3">
+        ${masuk && masuk.foto
+          ? `<button type="button" class="btn btn-outline btn-sm" onclick="previewPhoto('${esc(masuk.foto)}')">Foto Masuk</button>`
+          : `<button type="button" class="btn btn-outline btn-sm" disabled>Foto Masuk (-)</button>`}
+        ${istirahat && istirahat.foto
+          ? `<button type="button" class="btn btn-outline btn-sm" onclick="previewPhoto('${esc(istirahat.foto)}')">Foto Istirahat</button>`
+          : `<button type="button" class="btn btn-outline btn-sm" disabled>Foto Istirahat (-)</button>`}
+        ${pulang && pulang.foto
+          ? `<button type="button" class="btn btn-soft btn-sm" onclick="previewPhoto('${esc(pulang.foto)}')">Foto Pulang</button>`
+          : `<button type="button" class="btn btn-soft btn-sm" disabled>Foto Pulang (-)</button>`}
+      </div>
+    </div>
+  `;
+}
+
+async function loadCrewCalendar() {
+  const y = state.calYear;
+  const m = state.calMonth;
+  const daysInMonth = new Date(y, m, 0).getDate();
+  const startDate = `${y}-${pad2(m)}-01`;
+  const endDate = `${y}-${pad2(m)}-${pad2(daysInMonth)}`;
+
+  document.getElementById('calMonthLabel').textContent = `${BULAN_ID[m - 1]} ${y}`;
+  document.getElementById('crewCalendarGrid').innerHTML = '<div class="empty-state" style="grid-column:1/-1">Memuat kalender...</div>';
+
+  try {
+    const res = await apiCall({ action: 'getHistory', filters: { startDate, endDate } });
+    const built = buildCalendarMaps(res.records, res.schedules);
+    state.calRecordsByDate = built.byDate;
+    state.calSchedulesByDate = built.schedByDate;
+
+    document.getElementById('calTotalMasuk').textContent = `${built.totalMasuk} hari`;
+    document.getElementById('calTotalPagi').textContent = `${built.pagi}x`;
+    document.getElementById('calTotalSiang').textContent = `${built.siang}x`;
+    document.getElementById('calTotalFullDay').textContent = `${built.fullDay}x`;
+
+    const todayKey = `${nowInit.getFullYear()}-${pad2(nowInit.getMonth() + 1)}-${pad2(nowInit.getDate())}`;
+    const attendedKeys = Object.keys(built.byDate).sort();
+    state.calSelectedDate = todayKey.startsWith(`${y}-${pad2(m)}-`)
+      ? todayKey
+      : (attendedKeys[attendedKeys.length - 1] || `${y}-${pad2(m)}-01`);
+
+    renderCalendarGridInto(
+      document.getElementById('crewCalendarGrid'),
+      y, m, built.byDate, built.schedByDate, state.calSelectedDate,
+      selectCrewCalendarDay
+    );
+    selectCrewCalendarDay(state.calSelectedDate);
+  } catch (err) {
+    document.getElementById('crewCalendarGrid').innerHTML = `<div class="empty-state" style="grid-column:1/-1">${esc(err.message)}</div>`;
+  }
 }
 
 function selectCrewCalendarDay(dateKey) {
@@ -866,86 +1417,181 @@ function selectCrewCalendarDay(dateKey) {
   document.querySelectorAll('#crewCalendarGrid .cal-day').forEach((btn) => {
     btn.classList.toggle('selected', btn.dataset.date === dateKey);
   });
-
-  const parts = dateKey.split('-').map(Number);
-  const dtObj = new Date(parts[0], parts[1] - 1, parts[2]);
-  const titleStr = `${HARI_ID[dtObj.getDay()]}, ${parts[2]} ${BULAN_ID[parts[1] - 1]} ${parts[0]}`;
-  document.getElementById('crewDayDetailTitle').textContent = titleStr;
-
-  const list = state.calRecordsByDate[dateKey] || [];
-  const bodyEl = document.getElementById('crewDayDetailBody');
-  const totalBulanIni = document.getElementById('calTotalMasuk').textContent;
-
-  if (!list.length) {
-    bodyEl.innerHTML = `
-      <div class="day-detail-box">
-        <p class="subtitle">Tidak ada absensi pada tanggal ini.</p>
-        <div class="detail-row mt-8"><span>Total Hari Masuk Bulan Ini</span><strong>${esc(totalBulanIni)}</strong></div>
-      </div>
-    `;
-    return;
-  }
-
-  const masukList = list.filter((r) => r.jenis === 'MASUK');
-  const pulangList = list.filter((r) => r.jenis === 'PULANG');
-  const masuk = masukList[0] || null;
-  const pulang = pulangList[pulangList.length - 1] || null;
-  const shiftLabel = (masuk && masuk.shift) || (pulang && pulang.shift) || '-';
-  const statusMasuk = masuk ? masuk.status : '-';
-  const statusPulang = pulang ? pulang.status : 'Belum Absen Pulang';
-
-  bodyEl.innerHTML = `
-    <div class="day-detail-box">
-      <div class="detail-grid" style="margin-top:0;padding:0;background:transparent">
-        <div class="detail-row"><span>Shift</span><strong>${esc(shiftLabel)}</strong></div>
-        <div class="detail-row"><span>Jam Masuk</span><strong>${masuk ? esc(masuk.jam) + ' WIB' : '-'}</strong></div>
-        <div class="detail-row"><span>Status Masuk</span><strong>${esc(statusMasuk)}</strong></div>
-        <div class="detail-row"><span>Jam Keluar</span><strong>${pulang ? esc(pulang.jam) + ' WIB' : 'Belum absen pulang'}</strong></div>
-        <div class="detail-row"><span>Durasi / Status Pulang</span><strong>${esc(statusPulang)}</strong></div>
-        <div class="detail-row"><span>Total Hari Masuk Bulan Ini</span><strong>${esc(totalBulanIni)}</strong></div>
-      </div>
-      <div class="photo-btn-row">
-        ${masuk && masuk.foto
-          ? `<button type="button" class="btn btn-outline btn-sm" onclick="previewPhoto('${esc(masuk.foto)}')">Lihat Foto Masuk</button>`
-          : `<button type="button" class="btn btn-outline btn-sm" disabled>Foto Masuk (-)</button>`}
-        ${pulang && pulang.foto
-          ? `<button type="button" class="btn btn-soft btn-sm" onclick="previewPhoto('${esc(pulang.foto)}')">Lihat Foto Pulang</button>`
-          : `<button type="button" class="btn btn-soft btn-sm" disabled>Foto Pulang (-)</button>`}
-      </div>
-    </div>
-  `;
+  renderCalendarDayDetailInto(
+    document.getElementById('crewDayDetailTitle'),
+    document.getElementById('crewDayDetailBody'),
+    dateKey,
+    state.calRecordsByDate[dateKey],
+    state.calSchedulesByDate[dateKey],
+    document.getElementById('calTotalMasuk').textContent
+  );
 }
 
-/* ======================== RIWAYAT ADMIN: DAFTAR & FILTER ======================== */
+/* ======================== MODAL DETAILS: KALENDER CREW (ADMIN & MONITORING) ======================== */
 
-function populateFilterStores() {
+window.openCrewCalendarModal = function (encodedCrew) {
+  const crew = JSON.parse(decodeURIComponent(encodedCrew));
+  state.adminCalTarget = crew;
+  state.adminCalMonth = Number(document.getElementById('storeDetailMonth').value) || (nowInit.getMonth() + 1);
+  state.adminCalYear = Number(document.getElementById('storeDetailYear').value) || nowInit.getFullYear();
+
+  document.getElementById('modalCrewCalTitle').textContent = crew.nama;
+  const meta = [crew.toko, crew.posisi || 'CREW'];
+  if (crew.area && crew.area !== '-') meta.push(crew.area);
+  document.getElementById('modalCrewCalSub').textContent = meta.join(' • ');
+
+  openModal('modalCrewCalendar');
+  loadAdminCrewCalendar();
+};
+
+async function loadAdminCrewCalendar() {
+  if (!state.adminCalTarget) return;
+  const y = state.adminCalYear;
+  const m = state.adminCalMonth;
+  const daysInMonth = new Date(y, m, 0).getDate();
+  const startDate = `${y}-${pad2(m)}-01`;
+  const endDate = `${y}-${pad2(m)}-${pad2(daysInMonth)}`;
+
+  document.getElementById('adminCalMonthLabel').textContent = `${BULAN_ID[m - 1]} ${y}`;
+  document.getElementById('adminCrewCalGrid').innerHTML = '<div class="empty-state" style="grid-column:1/-1">Memuat kalender crew...</div>';
+
+  const actionName = state.user.role === 'ADMIN' ? 'getHistory' : 'getMonitoringHistory';
+  try {
+    const res = await apiCall({
+      action: actionName,
+      filters: { crewName: state.adminCalTarget.nama, startDate, endDate }
+    });
+    const built = buildCalendarMaps(res.records, res.schedules);
+    state.adminCalRecordsByDate = built.byDate;
+    state.adminCalSchedulesByDate = built.schedByDate;
+
+    document.getElementById('adminCalTotalMasuk').textContent = `${built.totalMasuk} hari`;
+    document.getElementById('adminCalTotalPagi').textContent = `${built.pagi}x`;
+    document.getElementById('adminCalTotalSiang').textContent = `${built.siang}x`;
+    document.getElementById('adminCalTotalFullDay').textContent = `${built.fullDay}x`;
+
+    const todayKey = `${nowInit.getFullYear()}-${pad2(nowInit.getMonth() + 1)}-${pad2(nowInit.getDate())}`;
+    const attendedKeys = Object.keys(built.byDate).sort();
+    state.adminCalSelectedDate = todayKey.startsWith(`${y}-${pad2(m)}-`)
+      ? todayKey
+      : (attendedKeys[attendedKeys.length - 1] || `${y}-${pad2(m)}-01`);
+
+    renderCalendarGridInto(
+      document.getElementById('adminCrewCalGrid'),
+      y, m, built.byDate, built.schedByDate, state.adminCalSelectedDate,
+      selectAdminCrewCalendarDay
+    );
+    selectAdminCrewCalendarDay(state.adminCalSelectedDate);
+  } catch (err) {
+    document.getElementById('adminCrewCalGrid').innerHTML = `<div class="empty-state" style="grid-column:1/-1">${esc(err.message)}</div>`;
+  }
+}
+
+function selectAdminCrewCalendarDay(dateKey) {
+  state.adminCalSelectedDate = dateKey;
+  document.querySelectorAll('#adminCrewCalGrid .cal-day').forEach((btn) => {
+    btn.classList.toggle('selected', btn.dataset.date === dateKey);
+  });
+  renderCalendarDayDetailInto(
+    document.getElementById('adminCalDayTitle'),
+    document.getElementById('adminCalDayBody'),
+    dateKey,
+    state.adminCalRecordsByDate[dateKey],
+    state.adminCalSchedulesByDate[dateKey],
+    document.getElementById('adminCalTotalMasuk').textContent
+  );
+}
+
+/* ======================== RIWAYAT & GALERI FOTO ======================== */
+
+function populateFilterStores(storeNames) {
+  const names = storeNames && storeNames.length
+    ? storeNames
+    : state.stores.map((s) => (typeof s === 'string' ? s : s.nama));
   const sel = document.getElementById('filterToko');
-  sel.innerHTML = '<option value="SEMUA">Semua Toko</option>' +
-    state.stores.map((s) => `<option value="${esc(s.nama)}">${esc(s.nama)}</option>`).join('');
+  if (sel) {
+    const prev = sel.value || 'SEMUA';
+    sel.innerHTML = '<option value="SEMUA">Semua Toko</option>' +
+      names.map((n) => `<option value="${esc(n)}">${esc(n)}</option>`).join('');
+    if ([...sel.options].some((o) => o.value === prev)) sel.value = prev;
+  }
+  const jSel = document.getElementById('jadwalTokoSelect');
+  if (jSel && names.length) {
+    const prevJ = jSel.value || state.jadwalStore || (state.user && state.user.role === 'CREW' ? state.user.toko : names[0]);
+    jSel.innerHTML = names.map((n) => `<option value="${esc(n)}">${esc(n)}</option>`).join('');
+    if ([...jSel.options].some((o) => o.value === prevJ)) jSel.value = prevJ;
+  }
 }
 
 async function loadHistory() {
-  document.getElementById('riwayatPageTitle').textContent = 'Riwayat Absensi';
-  document.getElementById('crewCalendarContainer').classList.add('hidden');
-  document.getElementById('adminHistoryContainer').classList.remove('hidden');
+  const isAdmin = state.user.role === 'ADMIN';
+  document.getElementById('riwayatModeSub').textContent = isAdmin
+    ? 'Semua cabang • Admin dapat edit/hapus'
+    : 'Pantauan lintas cabang (Hanya Lihat)';
 
   const container = document.getElementById('historyList');
+  const gallery = document.getElementById('historyGallery');
   container.innerHTML = '<div class="empty-state">Memuat riwayat absensi...</div>';
+  gallery.innerHTML = '';
 
   const filters = {
     search: document.getElementById('filterSearch').value.trim(),
     toko: document.getElementById('filterToko').value,
+    jenis: document.getElementById('filterJenis').value,
     shift: document.getElementById('filterShift').value,
     startDate: document.getElementById('filterStart').value,
     endDate: document.getElementById('filterEnd').value
   };
 
+  const actionName = isAdmin ? 'getHistory' : 'getMonitoringHistory';
   try {
-    const res = await apiCall({ action: 'getHistory', filters });
-    renderRecordList(container, res.records || [], state.user.role === 'ADMIN');
+    const res = await apiCall({ action: actionName, filters });
+    if (res.stores && res.stores.length) populateFilterStores(res.stores);
+    state.historyRecords = res.records || [];
+    renderHistoryCurrentMode();
   } catch (err) {
     container.innerHTML = `<div class="empty-state">${esc(err.message)}</div>`;
   }
+}
+
+function renderHistoryCurrentMode() {
+  const isAdmin = state.user.role === 'ADMIN';
+  const listEl = document.getElementById('historyList');
+  const galEl = document.getElementById('historyGallery');
+
+  document.getElementById('btnHistoryListMode').classList.toggle('active', state.historyMode === 'list');
+  document.getElementById('btnHistoryGalleryMode').classList.toggle('active', state.historyMode === 'gallery');
+
+  if (state.historyMode === 'gallery') {
+    listEl.classList.add('hidden');
+    galEl.classList.remove('hidden');
+    renderHistoryGallery(galEl, state.historyRecords);
+  } else {
+    galEl.classList.add('hidden');
+    listEl.classList.remove('hidden');
+    renderRecordList(listEl, state.historyRecords, isAdmin);
+  }
+}
+
+function renderHistoryGallery(container, records) {
+  const withPhoto = (records || []).filter((r) => r.foto);
+  if (!withPhoto.length) {
+    container.innerHTML = '<div class="empty-state" style="grid-column:1/-1">Belum ada bukti foto sesuai filter.</div>';
+    return;
+  }
+  container.innerHTML = withPhoto.map((r) => `
+    <div class="gallery-card" onclick="previewPhoto('${esc(r.foto)}')">
+      <img class="gallery-thumb" loading="lazy" src="${esc(toDisplayImageUrl(r.foto, 500))}" alt="${esc(r.nama)}" />
+      <div class="gallery-meta">
+        <div style="display:flex;justify-content:space-between;align-items:center;gap:6px">
+          <strong>${esc(r.nama)}</strong>
+          <span class="badge ${jenisBadgeClass(r.jenis)}">${esc(r.jenis)}</span>
+        </div>
+        <span>${esc(r.toko)} • ${esc(r.shift)}</span>
+        <span>${esc(r.tanggalDisplay)} • ${esc(r.jam)}</span>
+      </div>
+    </div>
+  `).join('');
 }
 
 function renderRecordList(container, records, allowAdminActions) {
@@ -955,7 +1601,6 @@ function renderRecordList(container, records, allowAdminActions) {
   }
 
   container.innerHTML = records.map((r) => {
-    const jenisClass = r.jenis === 'MASUK' ? 'badge-masuk' : 'badge-pulang';
     const statusClass = r.isLate ? 'badge-danger' : 'badge-neutral';
     const encoded = encodeURIComponent(JSON.stringify(r));
 
@@ -966,7 +1611,7 @@ function renderRecordList(container, records, allowAdminActions) {
             <div class="record-title">${esc(r.nama)}</div>
             <div class="record-sub">${esc(r.toko)} • Shift ${esc(r.shift)} • ${esc(r.hari)}, ${esc(r.tanggalDisplay)}</div>
           </div>
-          <span class="badge ${jenisClass}">${esc(r.jenis)}</span>
+          <span class="badge ${jenisBadgeClass(r.jenis)}">${esc(r.jenis)}</span>
         </div>
         <div class="record-bottom">
           <div>
@@ -986,17 +1631,48 @@ function renderRecordList(container, records, allowAdminActions) {
   }).join('');
 }
 
-/* ======================== DASHBOARD ADMIN & DETAIL TOKO ======================== */
+/* ======================== DASHBOARD LIVE & DETAIL TOKO ======================== */
 
 async function loadDashboard() {
-  setLoading(true, 'Memuat dashboard...');
+  const isAdmin = state.user.role === 'ADMIN';
+  document.getElementById('dashHeadingTitle').textContent = isAdmin ? 'Dashboard Hari Ini' : 'Monitoring Live Outlet';
+  document.getElementById('dashTopSwitcher').classList.toggle('hidden', state.user.role === 'MONITORING');
+
+  setLoading(true, 'Memuat data live...');
   try {
-    const res = await apiCall({ action: 'getDashboard' });
+    const res = await apiCall({ action: isAdmin ? 'getDashboard' : 'getMonitoringDashboard' });
+    if (res.stores && res.stores.length) populateFilterStores(res.stores);
+
     document.getElementById('dashDateLabel').textContent = res.serverDate;
     document.getElementById('kpiMasuk').textContent = res.summary.masuk;
+    document.getElementById('kpiIstirahat').textContent = res.summary.sedangIstirahat || 0;
     document.getElementById('kpiPulang').textContent = res.summary.pulang;
     document.getElementById('kpiBelumPulang').textContent = res.summary.belumPulangHariIni;
     document.getElementById('kpiTelat').textContent = res.summary.terlambat;
+
+    // Pantauan Istirahat Live
+    const brCard = document.getElementById('dashActiveBreaksCard');
+    const brList = document.getElementById('dashActiveBreaksList');
+    state.dashActiveBreaks = res.activeBreaks || [];
+    if (state.dashActiveBreaks.length) {
+      brCard.classList.remove('hidden');
+      brList.innerHTML = state.dashActiveBreaks.map((b) => `
+        <div class="mini-item">
+          <div>
+            <strong>${esc(b.nama)}</strong> (${esc(b.toko)})
+            <div class="record-sub">Shift ${esc(b.shift)} • Mulai ${esc(b.startJam)} s/d ${esc(b.endJam)} WIB</div>
+          </div>
+          <div style="display:flex;align-items:center;gap:6px">
+            ${b.foto ? `<button type="button" class="btn-ghost-sm" onclick="previewPhoto('${esc(b.foto)}')">Foto</button>` : ''}
+            <span class="badge ${b.isOngoing ? 'badge-warning' : 'badge-masuk'} live-break-badge" data-end-ms="${b.endMs}">
+              ${b.isOngoing ? `Sisa ${formatRemainingMs(b.endMs - (Date.now() + state.serverOffsetMs))}` : 'Selesai'}
+            </span>
+          </div>
+        </div>
+      `).join('');
+    } else {
+      brCard.classList.add('hidden');
+    }
 
     const bpCard = document.getElementById('belumPulangCard');
     const bpList = document.getElementById('belumPulangList');
@@ -1015,11 +1691,11 @@ async function loadDashboard() {
       bpCard.classList.add('hidden');
     }
 
-    // Tabel per toko — setiap baris bisa diklik ke Detail Crew Toko
     document.getElementById('dashStoreTable').innerHTML = (res.perStore || []).map((s) => `
       <tr class="clickable-row" onclick="openStoreDetail(decodeURIComponent('${encodeURIComponent(s.toko)}'))">
         <td><strong>${esc(s.toko)} &rsaquo;</strong></td>
         <td>${s.masuk}</td>
+        <td>${s.istirahat || 0}</td>
         <td>${s.pulang}</td>
         <td>${s.belumPulang > 0 ? `<span class="badge badge-warning">${s.belumPulang}</span>` : '0'}</td>
         <td>${s.terlambat > 0 ? `<span class="badge badge-danger">${s.terlambat}</span>` : '0'}</td>
@@ -1027,7 +1703,8 @@ async function loadDashboard() {
     `).join('');
 
     renderCharts(res.chartPerStore || [], res.chart7Days || []);
-    renderRecordList(document.getElementById('dashTodayList'), res.todayRecords || [], true);
+    renderRecordList(document.getElementById('dashTodayList'), res.todayRecords || [], isAdmin);
+    tickAllBreakCountdowns();
   } catch (err) {
     showToast(err.message, 'error');
   } finally {
@@ -1099,9 +1776,10 @@ async function loadStoreDetailData() {
   const listEl = document.getElementById('storeDetailList');
   listEl.innerHTML = '<div class="empty-state">Memuat detail crew toko...</div>';
 
+  const actionName = state.user.role === 'ADMIN' ? 'getStoreDetail' : 'getMonitoringStoreDetail';
   try {
     const res = await apiCall({
-      action: 'getStoreDetail',
+      action: actionName,
       toko: state.activeStoreDetail,
       month,
       year
@@ -1121,6 +1799,13 @@ async function loadStoreDetailData() {
       const metaParts = [c.posisi || 'CREW'];
       if (c.area && c.area !== '-') metaParts.push(c.area);
       if (c.noTelp && c.noTelp !== '-') metaParts.push(c.noTelp);
+
+      const encCrew = encodeURIComponent(JSON.stringify({
+        nama: c.nama,
+        toko: c.toko,
+        posisi: c.posisi,
+        area: c.area
+      }));
 
       return `
         <div class="crew-stat-card">
@@ -1153,6 +1838,9 @@ async function loadStoreDetailData() {
               <strong class="${c.totalTelatMenit > 0 ? 'text-danger' : 'text-success'}">${c.totalTelatMenit} mnt</strong>
             </div>
           </div>
+          <button type="button" class="crew-details-bar" onclick="openCrewCalendarModal('${encCrew}')">
+            DETAILS &mdash; Lihat Kalender &amp; Foto &rsaquo;
+          </button>
         </div>
       `;
     }).join('');
@@ -1161,15 +1849,256 @@ async function loadStoreDetailData() {
   }
 }
 
+/* ======================== JADWAL SHIFT MINGGUAN & BULANAN PER TOKO ======================== */
+
+async function loadJadwalView() {
+  const isAdmin = state.user.role === 'ADMIN';
+  document.getElementById('jadwalModeSubtitle').textContent = isAdmin
+    ? 'Klik kotak tanggal untuk mengatur/mengubah shift, lalu Simpan.'
+    : 'Jadwal resmi per outlet dari Admin (Hanya Lihat).';
+
+  const tokoSel = document.getElementById('jadwalTokoSelect');
+  const month = Number(document.getElementById('jadwalMonthSelect').value) || (nowInit.getMonth() + 1);
+  const year = Number(document.getElementById('jadwalYearSelect').value) || nowInit.getFullYear();
+  let toko = tokoSel.value || state.jadwalStore || (state.user.role === 'CREW' ? state.user.toko : '');
+
+  const wrap = document.getElementById('jadwalMatrixWrap');
+  wrap.innerHTML = '<div class="empty-state">Memuat jadwal toko...</div>';
+
+  try {
+    const res = await apiCall({ action: 'getSchedules', toko, month, year });
+    if (res.stores && res.stores.length) {
+      populateFilterStores(res.stores);
+      if (!toko) {
+        toko = (state.user.role === 'CREW' && res.stores.includes(state.user.toko))
+          ? state.user.toko
+          : res.stores[0];
+        tokoSel.value = toko;
+        state.jadwalStore = toko;
+        return loadJadwalView();
+      }
+    }
+
+    state.jadwalStore = toko;
+    state.jadwalCrews = res.crews || [];
+    state.jadwalMap = {};
+    state.jadwalDirty = {};
+    (res.schedules || []).forEach((s) => {
+      const k = `${s.dateKey}|${s.crewId || s.nama.toUpperCase()}`;
+      state.jadwalMap[k] = s.status;
+    });
+    updateJadwalDirtyInfo();
+    renderJadwalMatrix(year, month);
+  } catch (err) {
+    wrap.innerHTML = `<div class="empty-state">${esc(err.message)}</div>`;
+  }
+}
+
+function renderJadwalMatrix(year, month) {
+  const wrap = document.getElementById('jadwalMatrixWrap');
+  const crews = state.jadwalCrews || [];
+  if (!crews.length) {
+    wrap.innerHTML = '<div class="empty-state">Belum ada crew terdaftar di cabang ini.</div>';
+    return;
+  }
+
+  const isAdmin = state.user.role === 'ADMIN';
+  const daysInMonth = new Date(year, month, 0).getDate();
+  const weekFilter = document.getElementById('jadwalWeekSelect').value;
+  let startDay = 1;
+  let endDay = daysInMonth;
+  if (weekFilter !== 'ALL') {
+    const w = Number(weekFilter);
+    startDay = (w - 1) * 7 + 1;
+    endDay = Math.min(daysInMonth, w * 7);
+  }
+
+  const todayKey = `${nowInit.getFullYear()}-${pad2(nowInit.getMonth() + 1)}-${pad2(nowInit.getDate())}`;
+
+  const thead = `
+    <thead>
+      <tr>
+        <th class="sticky-date">Tanggal</th>
+        ${crews.map((c) => {
+          const isCap = (c.posisi || '').toUpperCase().includes('KEPALA');
+          const cls = isCap ? 'col-captain' : (c.area === 'BAKERY' ? 'col-bakery' : (c.area === 'DRINK' ? 'col-drink' : ''));
+          const sub = isCap ? 'KEPALA TOKO' : (c.area || c.posisi || 'CREW');
+          return `<th class="${cls}">${esc(c.nama)}<br><small style="opacity:0.85;font-weight:600">${esc(sub)}</small></th>`;
+        }).join('')}
+      </tr>
+    </thead>
+  `;
+
+  let rowsHtml = '';
+  for (let d = startDay; d <= endDay; d++) {
+    const dk = `${year}-${pad2(month)}-${pad2(d)}`;
+    const dtObj = new Date(year, month - 1, d);
+    const dayIdx = dtObj.getDay();
+    const rowCls = [
+      dk === todayKey ? 'is-today-row' : '',
+      dayIdx === 0 ? 'is-weekend-row' : ''
+    ].filter(Boolean).join(' ');
+
+    const cells = crews.map((c) => {
+      const key = `${dk}|${c.id || c.nama.toUpperCase()}`;
+      const val = state.jadwalDirty[key] !== undefined
+        ? state.jadwalDirty[key].status
+        : (state.jadwalMap[key] || '');
+      const colorCls = getScheduleStyleClass(val);
+
+      if (!isAdmin) {
+        return `<td><span class="sched-tag ${colorCls}">${esc(val || '-')}</span></td>`;
+      }
+
+      const presetVals = JADWAL_PRESET_OPTIONS.map((o) => o.val);
+      const isCustomVal = val && !presetVals.includes(val);
+      const optsHtml = JADWAL_PRESET_OPTIONS.map((o) =>
+        `<option value="${esc(o.val)}" ${val === o.val ? 'selected' : ''}>${esc(o.label)}</option>`
+      ).join('') + (isCustomVal ? `<option value="${esc(val)}" selected>${esc(val)}</option>` : '');
+
+      return `
+        <td>
+          <select class="jadwal-cell-select ${colorCls}"
+            data-dk="${dk}"
+            data-cid="${esc(c.id)}"
+            data-nama="${esc(c.nama)}"
+            data-prev="${esc(val)}">
+            ${optsHtml}
+          </select>
+        </td>
+      `;
+    }).join('');
+
+    rowsHtml += `
+      <tr class="${rowCls}">
+        <td class="sticky-date">${pad2(d)}/${pad2(month)} <small>${HARI_SHORT[dayIdx]}</small></td>
+        ${cells}
+      </tr>
+    `;
+  }
+
+  wrap.innerHTML = `<table class="jadwal-table">${thead}<tbody>${rowsHtml}</tbody></table>`;
+
+  if (isAdmin) {
+    wrap.querySelectorAll('.jadwal-cell-select').forEach((sel) => {
+      sel.addEventListener('change', onJadwalCellChange);
+    });
+  }
+}
+
+function onJadwalCellChange(e) {
+  const sel = e.target;
+  const dk = sel.dataset.dk;
+  const cid = sel.dataset.cid;
+  const nama = sel.dataset.nama;
+  const val = sel.value;
+
+  if (val === '__CUSTOM__') {
+    state.jadwalBkoPending = { sel, dk, cid, nama, prev: sel.dataset.prev || '' };
+    document.getElementById('jadwalBkoDesc').textContent = `Jadwal khusus untuk ${nama} (${dk}). Contoh: TAPOS SIANG, BKO DEPOK.`;
+    document.getElementById('jadwalBkoInput').value = '';
+    openModal('modalJadwalBko');
+    sel.value = sel.dataset.prev || '';
+    return;
+  }
+
+  applyJadwalCellValue(sel, dk, cid, nama, val);
+}
+
+function applyJadwalCellValue(sel, dk, cid, nama, val) {
+  const key = `${dk}|${cid || nama.toUpperCase()}`;
+  const cleanVal = String(val || '').toUpperCase().trim();
+  state.jadwalDirty[key] = { dateKey: dk, crewId: cid, nama, status: cleanVal, catatan: '' };
+  sel.dataset.prev = cleanVal;
+
+  sel.className = `jadwal-cell-select ${getScheduleStyleClass(cleanVal)}`;
+  updateJadwalDirtyInfo();
+}
+
+function updateJadwalDirtyInfo() {
+  const count = Object.keys(state.jadwalDirty).length;
+  const info = document.getElementById('jadwalDirtyInfo');
+  const btn = document.getElementById('btnSaveJadwal');
+  if (!info || !btn) return;
+  if (count > 0) {
+    info.textContent = `${count} perubahan belum disimpan.`;
+    info.style.color = 'var(--primary)';
+    btn.textContent = `Simpan Jadwal (${count})`;
+  } else {
+    info.textContent = 'Pilih shift pada kotak tanggal, lalu klik Simpan.';
+    info.style.color = '';
+    btn.textContent = 'Simpan Jadwal';
+  }
+}
+
+async function saveJadwalChanges() {
+  const entries = Object.values(state.jadwalDirty);
+  if (!entries.length) {
+    showToast('Belum ada perubahan jadwal untuk disimpan.');
+    return;
+  }
+  setLoading(true, 'Menyimpan jadwal ke server...');
+  try {
+    const res = await apiCall({
+      action: 'saveSchedules',
+      toko: state.jadwalStore,
+      entries
+    }, 45000);
+    entries.forEach((ent) => {
+      const k = `${ent.dateKey}|${ent.crewId || ent.nama.toUpperCase()}`;
+      if (ent.status) state.jadwalMap[k] = ent.status;
+      else delete state.jadwalMap[k];
+    });
+    state.jadwalDirty = {};
+    updateJadwalDirtyInfo();
+    showToast(res.message || 'Jadwal tersimpan!', 'success');
+  } catch (err) {
+    showToast(err.message, 'error');
+  } finally {
+    setLoading(false);
+  }
+}
+
+function getScheduleStyleClass(val) {
+  const s = String(val || '').toUpperCase().trim();
+  if (!s) return 'st-empty';
+  if (s === 'PAGI') return 'st-pagi';
+  if (s === 'SIANG') return 'st-siang';
+  if (isFullDayShift(s)) return 'st-fullday';
+  if (s === 'OFF DAY' || s === 'OFF' || s === 'LIBUR') return 'st-off';
+  if (s === 'OUT') return 'st-out';
+  return 'st-bko';
+}
+
+function shortScheduleLabel(val) {
+  const s = String(val || '').toUpperCase().trim();
+  if (!s) return '';
+  if (s === 'PAGI') return 'PAGI';
+  if (s === 'SIANG') return 'SIANG';
+  if (s === 'FULL DAY') return 'FULL';
+  if (s === 'FULL PAGI') return 'F.PGI';
+  if (s === 'FULL SIANG') return 'F.SNG';
+  if (s === 'OFF DAY') return 'OFF';
+  if (s === 'OUT') return 'OUT';
+  return s.slice(0, 6);
+}
+
 /* ======================== INSIGHT & REKAP BULANAN ======================== */
 
 async function loadInsights(period) {
+  const isAdmin = state.user.role === 'ADMIN';
+  document.getElementById('insightTopSwitcher').classList.toggle('hidden', state.user.role === 'MONITORING');
+  document.getElementById('insightPageTitle').textContent = isAdmin ? 'Insight & Rekap Gaji' : 'Insight Performa Outlet';
+
   const activeBtn = document.querySelector('#insightPeriodToggle .seg-btn.active');
   const p = period || (activeBtn ? activeBtn.dataset.period : 'week');
 
   setLoading(true, 'Menghitung insight...');
   try {
-    const res = await apiCall({ action: 'getInsights', period: p });
+    const res = await apiCall({
+      action: isAdmin ? 'getInsights' : 'getMonitoringInsights',
+      period: p
+    });
     document.getElementById('insightPeriodDesc').textContent = `Perbandingan ${res.periodLabel} dibanding ${res.prevLabel}`;
 
     const o = res.overall;
@@ -1218,11 +2147,11 @@ function initMonthYearSelectors() {
   const monthOpts = BULAN_ID.map((b, i) => `<option value="${i + 1}" ${i === curM ? 'selected' : ''}>${b}</option>`).join('');
   const yearOpts = [curY - 1, curY, curY + 1].map((y) => `<option value="${y}" ${y === curY ? 'selected' : ''}>${y}</option>`).join('');
 
-  ['recapMonth', 'storeDetailMonth'].forEach((id) => {
+  ['recapMonth', 'storeDetailMonth', 'jadwalMonthSelect'].forEach((id) => {
     const el = document.getElementById(id);
     if (el) el.innerHTML = monthOpts;
   });
-  ['recapYear', 'storeDetailYear'].forEach((id) => {
+  ['recapYear', 'storeDetailYear', 'jadwalYearSelect'].forEach((id) => {
     const el = document.getElementById(id);
     if (el) el.innerHTML = yearOpts;
   });
@@ -1285,7 +2214,7 @@ function exportRecapCsv() {
 /* ======================== EDIT & HAPUS ABSENSI (ADMIN) ======================== */
 
 window.previewPhoto = function (url) {
-  document.getElementById('modalPhotoImg').src = toDisplayImageUrl(url);
+  document.getElementById('modalPhotoImg').src = toDisplayImageUrl(url, 1200);
   document.getElementById('modalPhotoLink').href = url;
   openModal('modalPhoto');
 };
@@ -1294,9 +2223,9 @@ window.openEditModal = function (encoded) {
   const r = JSON.parse(decodeURIComponent(encoded));
   document.getElementById('editRowNumber').value = r.rowNumber;
   document.getElementById('editRecordId').value = r.id || '';
-  document.getElementById('editJenis').value = r.jenis === 'PULANG' ? 'PULANG' : 'MASUK';
+  document.getElementById('editJenis').value = ['MASUK', 'ISTIRAHAT', 'PULANG'].includes(r.jenis) ? r.jenis : 'MASUK';
   const normShift = normalizeShift(r.shift);
-  document.getElementById('editShift').value = ['PAGI', 'SIANG', 'FULL DAY'].includes(normShift) ? normShift : 'PAGI';
+  document.getElementById('editShift').value = VALID_WORK_SHIFTS.includes(normShift) ? normShift : 'PAGI';
   document.getElementById('editNama').value = r.nama;
   document.getElementById('editToko').value = r.toko;
   document.getElementById('editJam').value = r.jam === '-' ? '' : r.jam;
@@ -1380,6 +2309,7 @@ async function loadMasterData() {
     localStorage.setItem('momoyo_stores', JSON.stringify(state.stores));
     populateFilterStores();
     syncThemeControls();
+    syncGreetingInputs();
 
     const crewEl = document.getElementById('manageCrewList');
     crewEl.innerHTML = state.crews.map((c) => {
@@ -1465,7 +2395,8 @@ window.openCrewModal = function (encoded) {
     document.getElementById('crewIdInput').value = c.id;
     document.getElementById('crewNamaInput').value = c.nama;
     tokoSel.value = c.toko;
-    document.getElementById('crewShiftInput').value = normalizeShift(c.shiftDefault || 'PAGI');
+    const normSh = normalizeShift(c.shiftDefault || 'PAGI');
+    document.getElementById('crewShiftInput').value = VALID_WORK_SHIFTS.includes(normSh) ? normSh : 'PAGI';
     document.getElementById('crewAreaInput').value = c.area || '';
     document.getElementById('crewPosisiInput').value = c.posisi || 'CREW';
     document.getElementById('crewTelpInput').value = c.noTelp || '';
@@ -1507,22 +2438,16 @@ window.openCrewModal = function (encoded) {
 
 function handleCrewPhotoPick(e) {
   const file = e.target.files && e.target.files[0];
+  e.target.value = '';
   if (!file) return;
   if (!file.type.startsWith('image/')) return showToast('Pilih file gambar.', 'error');
 
-  setLoading(true, 'Menyiapkan foto profil...');
-  compressImage(file, 450, 0.8)
-    .then(({ base64 }) => {
-      state.crewPhotoDraft = base64;
-      state.crewClearPhoto = false;
-      document.getElementById('crewPhotoPreview').innerHTML = `<img src="${base64}" alt="Pratinjau" />`;
-      document.getElementById('btnClearCrewPhoto').classList.remove('hidden');
-    })
-    .catch(() => showToast('Gagal memproses foto profil.', 'error'))
-    .finally(() => {
-      setLoading(false);
-      e.target.value = '';
-    });
+  openCropModalForFile(file, (croppedBase64) => {
+    state.crewPhotoDraft = croppedBase64;
+    state.crewClearPhoto = false;
+    document.getElementById('crewPhotoPreview').innerHTML = `<img src="${croppedBase64}" alt="Pratinjau" />`;
+    document.getElementById('btnClearCrewPhoto').classList.remove('hidden');
+  });
 }
 
 async function submitCrewForm(e) {
@@ -1659,44 +2584,55 @@ async function submitChangeAdminPass(e) {
 /* ======================== EVENT BINDING & UTILITAS ======================== */
 
 function bindEvents() {
-  // Tabs Login
-  document.getElementById('tabRoleCrew').addEventListener('click', () => {
-    document.getElementById('tabRoleCrew').classList.add('active');
-    document.getElementById('tabRoleAdmin').classList.remove('active');
-    document.getElementById('formLoginCrew').classList.remove('hidden');
-    document.getElementById('formLoginAdmin').classList.add('hidden');
-  });
-  document.getElementById('tabRoleAdmin').addEventListener('click', () => {
-    document.getElementById('tabRoleAdmin').classList.add('active');
-    document.getElementById('tabRoleCrew').classList.remove('active');
-    document.getElementById('formLoginAdmin').classList.remove('hidden');
-    document.getElementById('formLoginCrew').classList.add('hidden');
-  });
+  // Tabs Login (Crew / Admin / Monitoring)
+  const switchLoginTab = (tab) => {
+    document.getElementById('tabRoleCrew').classList.toggle('active', tab === 'crew');
+    document.getElementById('tabRoleAdmin').classList.toggle('active', tab === 'admin');
+    document.getElementById('tabRoleMonitor').classList.toggle('active', tab === 'monitor');
+    document.getElementById('formLoginCrew').classList.toggle('hidden', tab !== 'crew');
+    document.getElementById('formLoginAdmin').classList.toggle('hidden', tab !== 'admin');
+    document.getElementById('panelLoginMonitor').classList.toggle('hidden', tab !== 'monitor');
+  };
+  document.getElementById('tabRoleCrew').addEventListener('click', () => switchLoginTab('crew'));
+  document.getElementById('tabRoleAdmin').addEventListener('click', () => switchLoginTab('admin'));
+  document.getElementById('tabRoleMonitor').addEventListener('click', () => switchLoginTab('monitor'));
+  document.getElementById('btnEnterMonitoring').addEventListener('click', enterMonitoringMode);
 
   document.getElementById('loginStore').addEventListener('change', onLoginStoreChange);
   document.getElementById('formLoginCrew').addEventListener('submit', handleLoginCrew);
   document.getElementById('formLoginAdmin').addEventListener('submit', handleLoginAdmin);
   document.getElementById('btnLogout').addEventListener('click', handleLogout);
 
-  // Profil Header
-  document.getElementById('btnOpenProfile').addEventListener('click', openProfileModal);
-  document.getElementById('btnPickAdminPhoto').addEventListener('click', () => document.getElementById('inputAdminPhoto').click());
-  document.getElementById('inputAdminPhoto').addEventListener('change', handleAdminPhotoPick);
-  document.getElementById('btnClearAdminPhoto').addEventListener('click', clearAdminPhoto);
+  // Switcher Dashboard <-> Insight
+  document.querySelectorAll('[data-switch-view]').forEach((btn) => {
+    btn.addEventListener('click', () => switchView(btn.dataset.switchView));
+  });
 
-  // Form Absen
+  // Profil Header & Edit Profil (Admin Lengkap, Crew Khusus Foto)
+  document.getElementById('btnOpenProfile').addEventListener('click', openProfileModal);
+  document.getElementById('btnPickMyPhoto').addEventListener('click', () => document.getElementById('inputMyPhoto').click());
+  document.getElementById('inputMyPhoto').addEventListener('change', handleMyPhotoPick);
+  document.getElementById('btnClearMyPhoto').addEventListener('click', clearMyPhoto);
+  document.getElementById('formAdminProfile').addEventListener('submit', submitAdminProfileForm);
+
+  // Form Absen (Masuk / Istirahat / Pulang)
   document.querySelectorAll('#formAbsen .seg-btn').forEach((btn) => {
     btn.addEventListener('click', () => {
       document.querySelectorAll('#formAbsen .seg-btn').forEach((b) => b.classList.remove('active'));
       btn.classList.add('active');
-      document.getElementById('absenJenis').value = btn.dataset.jenis;
+      const jenis = btn.dataset.jenis;
+      document.getElementById('absenJenis').value = jenis;
+      document.getElementById('breakRuleHint').classList.toggle('hidden', jenis !== 'ISTIRAHAT');
+      updateAbsenGreetingDisplay();
     });
   });
 
   document.getElementById('absenToko').addEventListener('change', () => {
     updateShiftOptionLabels();
     updateGpsHint();
+    loadActiveBreaksForAbsen();
   });
+  document.getElementById('btnRefreshStoreBreaks').addEventListener('click', loadActiveBreaksForAbsen);
   document.getElementById('btnPickGallery').addEventListener('click', () => document.getElementById('inputFotoGaleri').click());
   document.getElementById('btnOpenCamera').addEventListener('click', () => document.getElementById('inputFotoKamera').click());
   document.getElementById('inputFotoGaleri').addEventListener('change', handlePhotoSelected);
@@ -1705,7 +2641,8 @@ function bindEvents() {
   document.getElementById('formAbsen').addEventListener('submit', submitAttendance);
   document.getElementById('btnRetryAbsen').addEventListener('click', () => submitAttendance());
 
-  // Kalender Crew Navigasi Bulan
+  // Kalender Crew Pribadi
+  document.getElementById('btnRefreshMyCalendar').addEventListener('click', loadCrewCalendar);
   document.getElementById('btnCalPrev').addEventListener('click', () => {
     state.calMonth -= 1;
     if (state.calMonth < 1) { state.calMonth = 12; state.calYear -= 1; }
@@ -1717,22 +2654,72 @@ function bindEvents() {
     loadCrewCalendar();
   });
 
-  // Riwayat & Dashboard
-  document.getElementById('btnApplyFilter').addEventListener('click', loadHistory);
-  document.getElementById('btnRefreshHistory').addEventListener('click', () => {
-    if (state.user.role === 'ADMIN') loadHistory();
-    else loadCrewCalendar();
+  // Modal DETAILS Kalender Crew (Admin & Monitoring)
+  document.getElementById('btnAdminCalPrev').addEventListener('click', () => {
+    state.adminCalMonth -= 1;
+    if (state.adminCalMonth < 1) { state.adminCalMonth = 12; state.adminCalYear -= 1; }
+    loadAdminCrewCalendar();
   });
+  document.getElementById('btnAdminCalNext').addEventListener('click', () => {
+    state.adminCalMonth += 1;
+    if (state.adminCalMonth > 12) { state.adminCalMonth = 1; state.adminCalYear += 1; }
+    loadAdminCrewCalendar();
+  });
+
+  // Riwayat & Galeri Foto
+  document.getElementById('btnApplyFilter').addEventListener('click', loadHistory);
+  document.getElementById('btnRefreshHistory').addEventListener('click', loadHistory);
   document.getElementById('btnResetFilter').addEventListener('click', () => {
     document.getElementById('filterSearch').value = '';
     document.getElementById('filterToko').value = 'SEMUA';
+    document.getElementById('filterJenis').value = 'SEMUA';
     document.getElementById('filterShift').value = 'SEMUA';
     document.getElementById('filterStart').value = '';
     document.getElementById('filterEnd').value = '';
     loadHistory();
   });
+  document.getElementById('btnHistoryListMode').addEventListener('click', () => {
+    state.historyMode = 'list';
+    renderHistoryCurrentMode();
+  });
+  document.getElementById('btnHistoryGalleryMode').addEventListener('click', () => {
+    state.historyMode = 'gallery';
+    renderHistoryCurrentMode();
+  });
+
+  // Dashboard & Detail Toko
   document.getElementById('btnRefreshDash').addEventListener('click', loadDashboard);
   document.getElementById('btnReloadStoreDetail').addEventListener('click', loadStoreDetailData);
+
+  // Jadwal Shift per Toko
+  document.getElementById('jadwalTokoSelect').addEventListener('change', loadJadwalView);
+  document.getElementById('jadwalMonthSelect').addEventListener('change', loadJadwalView);
+  document.getElementById('jadwalYearSelect').addEventListener('change', loadJadwalView);
+  document.getElementById('jadwalWeekSelect').addEventListener('change', () => {
+    const m = Number(document.getElementById('jadwalMonthSelect').value);
+    const y = Number(document.getElementById('jadwalYearSelect').value);
+    renderJadwalMatrix(y, m);
+  });
+  document.getElementById('btnReloadJadwal').addEventListener('click', loadJadwalView);
+  document.getElementById('btnSaveJadwal').addEventListener('click', saveJadwalChanges);
+
+  document.getElementById('btnConfirmJadwalBko').addEventListener('click', () => {
+    const pending = state.jadwalBkoPending;
+    const label = document.getElementById('jadwalBkoInput').value.trim().toUpperCase();
+    closeModal('modalJadwalBko');
+    if (!pending || !label) return;
+
+    const { sel, dk, cid, nama } = pending;
+    if (![...sel.options].some((o) => o.value === label)) {
+      const opt = document.createElement('option');
+      opt.value = label;
+      opt.textContent = label;
+      sel.appendChild(opt);
+    }
+    sel.value = label;
+    applyJadwalCellValue(sel, dk, cid, nama, label);
+    state.jadwalBkoPending = null;
+  });
 
   // Insight & Rekap
   document.querySelectorAll('#insightPeriodToggle .seg-btn').forEach((btn) => {
@@ -1745,7 +2732,8 @@ function bindEvents() {
   document.getElementById('btnLoadRecap').addEventListener('click', loadMonthlyRecap);
   document.getElementById('btnExportCsv').addEventListener('click', exportRecapCsv);
 
-  // Tema (Admin Kelola)
+  // Teks Ucapan & Tema (Admin Kelola)
+  document.getElementById('formAbsenGreetings').addEventListener('submit', saveAbsenGreetings);
   document.querySelectorAll('#themePresetGrid .theme-chip').forEach((btn) => {
     btn.addEventListener('click', () => {
       state.themeDraftPreset = btn.dataset.themePreset;
@@ -1830,16 +2818,30 @@ function showToast(msg, type = '') {
 function normalizeShift(val) {
   const s = String(val || '').toUpperCase().trim().replace(/\s+/g, ' ');
   if (s === 'FULLDAY' || s === 'FULL DAY' || s === 'FULL') return 'FULL DAY';
+  if (s === 'FULLPAGI' || s === 'FULL PAGI') return 'FULL PAGI';
+  if (s === 'FULLSIANG' || s === 'FULL SIANG') return 'FULL SIANG';
   if (s === 'SIANG') return 'SIANG';
   if (s === 'PAGI') return 'PAGI';
   return s;
 }
 
-function toDisplayImageUrl(url) {
+function isFullDayShift(shift) {
+  const s = normalizeShift(shift);
+  return s === 'FULL DAY' || s === 'FULL PAGI' || s === 'FULL SIANG';
+}
+
+function jenisBadgeClass(jenis) {
+  const j = String(jenis || '').toUpperCase();
+  if (j === 'MASUK') return 'badge-masuk';
+  if (j === 'ISTIRAHAT') return 'badge-istirahat';
+  return 'badge-pulang';
+}
+
+function toDisplayImageUrl(url, size = 1200) {
   const s = String(url || '').trim();
   const match = s.match(/[?&]id=([a-zA-Z0-9_-]+)/);
-  if (match && s.includes('drive.google.com') && !s.includes('thumbnail')) {
-    return `https://drive.google.com/thumbnail?id=${match[1]}&sz=w1200`;
+  if (match && s.includes('drive.google.com')) {
+    return `https://drive.google.com/thumbnail?id=${match[1]}&sz=w${size}`;
   }
   return s;
 }
