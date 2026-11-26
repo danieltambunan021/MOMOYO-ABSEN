@@ -18,12 +18,12 @@
   <script src="https://cdn.jsdelivr.net/npm/chart.js@4.4.4/dist/chart.umd.min.js" defer></script>
 </head>
 <body data-theme="default">
-  <!-- Layer Wallpaper & Dekorasi Tema -->
+  <!-- Layer Wallpaper Responsif (Auto-Portrait HP / Auto-Landscape Laptop) & Dekorasi Tema -->
   <div id="themeWallpaper" class="theme-wallpaper"></div>
   <div class="bg-orb orb-1"></div>
   <div class="bg-orb orb-2"></div>
 
-  <!-- Banner Ucapan Tema Musiman (Global dari Admin) -->
+  <!-- Banner Ucapan Tema Musiman (Global dari Admin Only) -->
   <div id="themeBanner" class="theme-banner hidden">
     <span id="themeBannerIcon">✨</span>
     <span id="themeBannerText"></span>
@@ -53,12 +53,12 @@
       </div>
 
       <div class="role-tabs role-tabs-3">
-        <button id="tabRoleCrew" class="role-tab active" type="button">Crew</button>
-        <button id="tabRoleAdmin" class="role-tab" type="button">Admin</button>
-        <button id="tabRoleMonitor" class="role-tab" type="button">Monitoring</button>
+        <button id="tabRoleCrew" class="role-tab active" type="button">Karyawan</button>
+        <button id="tabRoleAdmin" class="role-tab" type="button">Admin Only</button>
+        <button id="tabRoleMonitor" class="role-tab" type="button">Management Monitoring</button>
       </div>
 
-      <!-- Form Crew -->
+      <!-- Form Karyawan -->
       <form id="formLoginCrew" class="auth-form">
         <div class="form-group">
           <label for="loginStore">Pilih Cabang Toko</label>
@@ -67,37 +67,37 @@
           </select>
         </div>
         <div class="form-group">
-          <label for="loginCrew">Nama Crew</label>
+          <label for="loginCrew">Nama Karyawan</label>
           <select id="loginCrew" required disabled>
             <option value="">Pilih toko dulu</option>
           </select>
         </div>
         <div class="form-group">
-          <label for="loginPin">PIN / Password Crew</label>
+          <label for="loginPin">PIN / Password Karyawan</label>
           <input id="loginPin" type="password" inputmode="numeric" placeholder="Masukkan PIN dari Admin" required autocomplete="current-password" />
         </div>
-        <button type="submit" id="btnLoginCrew" class="btn btn-primary btn-block">Masuk sebagai Crew</button>
+        <button type="submit" id="btnLoginCrew" class="btn btn-primary btn-block">Masuk sebagai Karyawan</button>
       </form>
 
-      <!-- Form Admin -->
+      <!-- Form Admin Only -->
       <form id="formLoginAdmin" class="auth-form hidden">
         <div class="form-group">
-          <label for="loginAdminPass">Password Admin</label>
+          <label for="loginAdminPass">Password Admin Only</label>
           <input id="loginAdminPass" type="password" placeholder="Masukkan password Admin" required autocomplete="current-password" />
         </div>
-        <button type="submit" id="btnLoginAdmin" class="btn btn-primary btn-block">Masuk Dashboard Admin</button>
+        <button type="submit" id="btnLoginAdmin" class="btn btn-primary btn-block">Masuk Dashboard Admin Only</button>
       </form>
 
-      <!-- Panel Monitoring (Tanpa Login — Read-Only) -->
+      <!-- Panel Management Monitoring (Tanpa Login — Read-Only) -->
       <div id="panelLoginMonitor" class="auth-form hidden">
         <div class="monitor-intro-box">
-          <strong>Pantauan Live Semua Outlet</strong>
+          <strong>Management Monitoring — Live Outlet</strong>
           <p class="subtitle mt-8">
-            Pantau kehadiran hari ini, crew sedang istirahat, jadwal shift per toko, kalender tiap crew, dan bukti foto absensi secara langsung (hanya lihat / tidak bisa edit).
+            Pantau kehadiran hari ini, karyawan sedang istirahat, jadwal shift per toko, kalender tiap karyawan, dan bukti foto absensi secara langsung (hanya lihat / tidak bisa edit).
           </p>
         </div>
         <button type="button" id="btnEnterMonitoring" class="btn btn-primary btn-block mt-12">
-          Buka Mode Monitoring
+          Buka Management Monitoring
         </button>
       </div>
 
@@ -125,7 +125,7 @@
     <!-- Konten Utama -->
     <main class="main-content">
 
-      <!-- 1. VIEW ABSENSI (CREW & ADMIN) -->
+      <!-- 1. VIEW ABSENSI (KARYAWAN & ADMIN ONLY) -->
       <section id="viewAbsen" class="page-view hidden">
         <div class="glass-card hero-clock-card">
           <div class="clock-date" id="liveDate">Memuat tanggal...</div>
@@ -134,7 +134,7 @@
           <div class="clock-note">Jam resmi tercatat otomatis mengikuti waktu server (WIB)</div>
         </div>
 
-        <!-- Banner Jadwal Shift Hari Ini (Otomatis dari Roster Admin) -->
+        <!-- Banner Jadwal Shift Hari Ini (Otomatis dari Roster Admin Only) -->
         <div id="todayScheduleBanner" class="schedule-today-banner hidden">
           <div>
             <span class="schedule-banner-label">Jadwal Anda Hari Ini</span>
@@ -143,7 +143,7 @@
           <span id="todayScheduleBadge" class="badge badge-masuk">TERJADWAL</span>
         </div>
 
-        <!-- Countdown Istirahat Pribadi & Info Istirahat Per Toko -->
+        <!-- Countdown Istirahat Pribadi -->
         <div id="myBreakCountdownCard" class="glass-card break-countdown-card hidden">
           <div class="break-cd-top">
             <span class="badge badge-warning">SEDANG ISTIRAHAT</span>
@@ -165,7 +165,7 @@
           </div>
 
           <div id="breakRuleHint" class="info-banner hidden">
-            <strong>Aturan Istirahat:</strong> Shift Pagi/Siang = <b>1 jam</b>, Full Day / Full Pagi / Full Siang = <b>1 jam 30 menit</b>. Wajib foto selfie, hitung mundur otomatis dimulai saat submit.
+            <strong>Aturan Istirahat:</strong> Shift Pagi &amp; Siang = <b>1 jam</b>, Full Day = <b>1 jam 30 menit</b>. Wajib foto selfie, hitung mundur otomatis dimulai saat submit.
           </div>
 
           <div class="grid-2">
@@ -179,14 +179,12 @@
                 <option value="PAGI">Shift Pagi</option>
                 <option value="SIANG">Shift Siang</option>
                 <option value="FULL DAY">Full Day</option>
-                <option value="FULL PAGI">Full Pagi</option>
-                <option value="FULL SIANG">Full Siang</option>
               </select>
             </div>
           </div>
 
           <div class="form-group" id="absenNamaWrapper">
-            <label for="absenNama">Nama Crew</label>
+            <label for="absenNama">Nama Karyawan</label>
             <input type="text" id="absenNama" readonly />
           </div>
 
@@ -239,7 +237,7 @@
         </div>
       </section>
 
-      <!-- 2. VIEW KALENDER SAYA (KHUSUS AKUN CREW) -->
+      <!-- 2. VIEW KALENDER SAYA (KHUSUS AKUN KARYAWAN) -->
       <section id="viewKalenderSaya" class="page-view hidden">
         <div class="page-title-row">
           <h2>Kalender Absensi &amp; Jadwal</h2>
@@ -281,7 +279,7 @@
             <span><i class="dot dot-ok"></i> Hadir lengkap</span>
             <span><i class="dot dot-warn"></i> Belum pulang</span>
             <span><i class="dot dot-late"></i> Terlambat</span>
-            <span><i class="dot dot-sched"></i> Jadwal / Off</span>
+            <span><i class="dot dot-sched"></i> Jadwal / Izin / Sakit</span>
           </div>
         </div>
 
@@ -293,7 +291,7 @@
         </div>
       </section>
 
-      <!-- 3. VIEW RIWAYAT & GALERI FOTO (ADMIN = EDITABLE, MONITORING/CREW = READ-ONLY) -->
+      <!-- 3. VIEW RIWAYAT & GALERI FOTO (ADMIN ONLY = EDITABLE, MONITORING/KARYAWAN = READ-ONLY) -->
       <section id="viewRiwayat" class="page-view hidden">
         <div class="page-title-row">
           <div>
@@ -305,7 +303,7 @@
 
         <div class="glass-card filter-card">
           <div class="filter-grid filter-grid-6">
-            <input type="text" id="filterSearch" placeholder="Cari nama crew..." />
+            <input type="text" id="filterSearch" placeholder="Cari nama karyawan..." />
             <select id="filterToko">
               <option value="SEMUA">Semua Toko</option>
             </select>
@@ -320,8 +318,6 @@
               <option value="PAGI">Shift Pagi</option>
               <option value="SIANG">Shift Siang</option>
               <option value="FULL DAY">Full Day</option>
-              <option value="FULL PAGI">Full Pagi</option>
-              <option value="FULL SIANG">Full Siang</option>
             </select>
             <input type="date" id="filterStart" title="Dari tanggal" />
             <input type="date" id="filterEnd" title="Sampai tanggal" />
@@ -344,7 +340,7 @@
         <div id="historyGallery" class="photo-gallery-grid hidden"></div>
       </section>
 
-      <!-- 4. VIEW DASHBOARD LIVE (ADMIN & MONITORING/CREW READ-ONLY) -->
+      <!-- 4. VIEW DASHBOARD LIVE (ADMIN ONLY & MANAGEMENT MONITORING / KARYAWAN READ-ONLY) -->
       <section id="viewDashboard" class="page-view hidden">
         <!-- Switcher Cepat Dashboard vs Insight -->
         <div class="segmented-control mb-12" id="dashTopSwitcher">
@@ -397,7 +393,7 @@
         <div class="glass-card section-card">
           <div class="section-header-row">
             <h3>Ringkasan per Cabang Toko</h3>
-            <span class="click-hint">Ketuk toko untuk detail &amp; kalender crew</span>
+            <span class="click-hint">Ketuk toko untuk detail &amp; kalender karyawan</span>
           </div>
           <div class="table-wrap">
             <table class="data-table">
@@ -461,9 +457,9 @@
             </select>
           </div>
 
-          <!-- Bar Simpan Khusus Admin -->
+          <!-- Bar Simpan Khusus Admin Only -->
           <div id="jadwalAdminBar" class="jadwal-admin-bar admin-only mt-12">
-            <span id="jadwalDirtyInfo" class="subtitle">Pilih shift pada kotak tanggal, lalu klik Simpan.</span>
+            <span id="jadwalDirtyInfo" class="subtitle">Pilih jadwal pada kotak tanggal, lalu klik Simpan.</span>
             <button type="button" id="btnSaveJadwal" class="btn btn-primary btn-sm">Simpan Jadwal</button>
           </div>
         </div>
@@ -472,10 +468,10 @@
           <div class="jadwal-legend">
             <span class="sched-tag st-pagi">PAGI</span>
             <span class="sched-tag st-siang">SIANG</span>
-            <span class="sched-tag st-fullday">FULL DAY / PAGI / SIANG</span>
-            <span class="sched-tag st-off">OFF DAY</span>
-            <span class="sched-tag st-out">OUT</span>
-            <span class="sched-tag st-bko">BKO / LAINNYA</span>
+            <span class="sched-tag st-fullday">FULL DAY</span>
+            <span class="sched-tag st-izin">IZIN</span>
+            <span class="sched-tag st-sakit">SAKIT</span>
+            <span class="sched-tag st-lainnya">LAINNYA</span>
           </div>
           <div id="jadwalMatrixWrap" class="table-wrap jadwal-matrix-wrap mt-12">
             <div class="empty-state">Memuat jadwal toko...</div>
@@ -522,7 +518,7 @@
 
           <div class="section-header-row mt-16">
             <h3>Perbandingan per Toko</h3>
-            <span class="click-hint">Ketuk toko untuk detail crew</span>
+            <span class="click-hint">Ketuk toko untuk detail karyawan</span>
           </div>
           <div class="table-wrap">
             <table class="data-table">
@@ -538,7 +534,7 @@
             </table>
           </div>
 
-          <h3 class="mt-16">Perbandingan per Crew</h3>
+          <h3 class="mt-16">Perbandingan per Karyawan</h3>
           <div class="table-wrap">
             <table class="data-table">
               <thead>
@@ -555,7 +551,7 @@
           </div>
         </div>
 
-        <!-- Ekspor Rekap Gaji — Dikunci Khusus Admin -->
+        <!-- Ekspor Rekap Gaji — Dikunci Khusus Admin Only -->
         <div class="glass-card section-card admin-only">
           <h3>Ekspor Rekap Bulanan (Keperluan Gaji)</h3>
           <div class="recap-controls">
@@ -585,14 +581,14 @@
         </div>
       </section>
 
-      <!-- 7. VIEW KELOLA (KHUSUS ADMIN) -->
+      <!-- 7. VIEW KELOLA (KHUSUS ADMIN ONLY) -->
       <section id="viewKelola" class="page-view hidden">
         <h2>Kelola MOMOYO</h2>
 
         <!-- Pengaturan Teks Ucapan di Bawah Jam Absen -->
         <div class="glass-card section-card">
           <h3>Teks Ucapan Layar Absensi</h3>
-          <p class="subtitle mt-8">Tampil otomatis di bawah jam saat crew memilih Masuk, Istirahat, atau Pulang.</p>
+          <p class="subtitle mt-8">Tampil otomatis di bawah jam saat karyawan memilih Masuk, Istirahat, atau Pulang.</p>
           <form id="formAbsenGreetings" class="stack-form mt-12">
             <div class="form-group">
               <label for="greetMasukInput">Ucapan Absen Masuk</label>
@@ -610,10 +606,10 @@
           </form>
         </div>
 
-        <!-- Pengaturan Tema & Wallpaper Global -->
+        <!-- Pengaturan Tema & Wallpaper Responsif (Auto-Portrait HP & Auto-Landscape Laptop) -->
         <div class="glass-card section-card">
           <h3>Tema &amp; Wallpaper Aplikasi</h3>
-          <p class="subtitle mt-8">Perubahan tema langsung berlaku untuk seluruh HP crew &amp; halaman login.</p>
+          <p class="subtitle mt-8">Perubahan tema &amp; wallpaper langsung berlaku untuk semua perangkat (otomatis Portrait di HP &amp; Landscape di Laptop).</p>
 
           <div class="theme-grid mt-12" id="themePresetGrid">
             <button type="button" class="theme-chip active" data-theme-preset="default">
@@ -647,26 +643,42 @@
             <input type="text" id="themeBannerInput" maxlength="90" placeholder="Contoh: Marhaban ya Ramadhan — Semangat Tim MOMOYO!" />
           </div>
 
-          <div class="form-group">
-            <label>Wallpaper Gambar Sendiri (Opsional)</label>
-            <div class="photo-actions">
-              <button type="button" id="btnPickThemeWallpaper" class="btn btn-outline btn-sm">Pilih Gambar Wallpaper</button>
-              <button type="button" id="btnClearThemeWallpaper" class="btn btn-soft btn-sm">Hapus Wallpaper</button>
+          <div class="wallpaper-slots-grid">
+            <!-- Slot HP Portrait -->
+            <div class="wallpaper-slot-card">
+              <label class="field-label">Wallpaper HP (Auto-Portrait)</label>
+              <div class="photo-actions">
+                <button type="button" id="btnPickWallpaperMobile" class="btn btn-outline btn-sm">Pilih HP</button>
+                <button type="button" id="btnClearWallpaperMobile" class="btn btn-soft btn-sm">Hapus</button>
+              </div>
+              <input type="file" id="inputWallpaperMobile" accept="image/*" class="hidden" />
+              <div id="wallpaperMobilePreviewBox" class="wallpaper-preview preview-portrait hidden">
+                <img id="wallpaperMobilePreviewImg" alt="Pratinjau wallpaper HP" />
+              </div>
             </div>
-            <input type="file" id="inputThemeWallpaper" accept="image/*" class="hidden" />
-            <div id="themeWallpaperPreviewBox" class="wallpaper-preview hidden">
-              <img id="themeWallpaperPreviewImg" alt="Pratinjau wallpaper" />
+
+            <!-- Slot Laptop Landscape -->
+            <div class="wallpaper-slot-card">
+              <label class="field-label">Wallpaper Laptop (Auto-Landscape)</label>
+              <div class="photo-actions">
+                <button type="button" id="btnPickWallpaperDesktop" class="btn btn-outline btn-sm">Pilih Laptop</button>
+                <button type="button" id="btnClearWallpaperDesktop" class="btn btn-soft btn-sm">Hapus</button>
+              </div>
+              <input type="file" id="inputWallpaperDesktop" accept="image/*" class="hidden" />
+              <div id="wallpaperDesktopPreviewBox" class="wallpaper-preview preview-landscape hidden">
+                <img id="wallpaperDesktopPreviewImg" alt="Pratinjau wallpaper Laptop" />
+              </div>
             </div>
           </div>
 
-          <button type="button" id="btnSaveTheme" class="btn btn-primary btn-block">Terapkan Tema ke Semua HP</button>
+          <button type="button" id="btnSaveTheme" class="btn btn-primary btn-block mt-12">Terapkan Tema &amp; Wallpaper</button>
         </div>
 
-        <!-- Kelola Crew -->
+        <!-- Kelola Karyawan -->
         <div class="glass-card section-card">
           <div class="section-header-row">
-            <h3>Daftar Crew, Profil &amp; PIN</h3>
-            <button type="button" id="btnAddCrew" class="btn btn-primary btn-sm">+ Tambah Crew</button>
+            <h3>Daftar Karyawan, Profil &amp; PIN</h3>
+            <button type="button" id="btnAddCrew" class="btn btn-primary btn-sm">+ Tambah Karyawan</button>
           </div>
           <div id="manageCrewList" class="manage-list"></div>
         </div>
@@ -680,9 +692,9 @@
           <div id="manageStoreList" class="manage-list"></div>
         </div>
 
-        <!-- Ganti Password Admin -->
+        <!-- Ganti Password Admin Only -->
         <div class="glass-card section-card">
-          <h3>Ganti Password Admin</h3>
+          <h3>Ganti Password Admin Only</h3>
           <form id="formChangeAdminPass" class="stack-form">
             <div class="form-group">
               <label for="oldAdminPass">Password Lama</label>
@@ -705,7 +717,7 @@
 
   <!-- ==================== MODALS ==================== -->
 
-  <!-- Modal Profil (Admin = Edit Lengkap + Foto Crop, Crew = Ganti Foto Crop Saja) -->
+  <!-- Modal Profil (Admin Only = Edit Lengkap + Foto Crop, Karyawan = Ganti Foto Crop Saja) -->
   <div id="modalProfile" class="modal-backdrop hidden">
     <div class="modal-card">
       <div class="modal-head">
@@ -718,7 +730,7 @@
         <span class="subtitle" id="profileSubLg">Role</span>
       </div>
 
-      <!-- Tombol Ganti / Hapus Foto (Admin & Crew) -->
+      <!-- Tombol Ganti / Hapus Foto (Admin Only & Karyawan) -->
       <div id="profilePhotoActionsBox" class="mt-8">
         <div class="photo-actions">
           <button type="button" id="btnPickMyPhoto" class="btn btn-outline btn-sm">Ganti Foto Profil</button>
@@ -727,10 +739,10 @@
         <input type="file" id="inputMyPhoto" accept="image/*" class="hidden" />
       </div>
 
-      <!-- Detail Read-Only (Crew) -->
+      <!-- Detail Read-Only (Karyawan) -->
       <div id="profileDetails" class="detail-grid"></div>
 
-      <!-- Form Edit Profil Lengkap (Khusus Admin) -->
+      <!-- Form Edit Profil Lengkap (Khusus Admin Only) -->
       <form id="formAdminProfile" class="stack-form mt-12 hidden">
         <div class="form-group">
           <label for="adminProfNama">Nama Admin</label>
@@ -780,7 +792,7 @@
     </div>
   </div>
 
-  <!-- Modal Detail Crew per Toko (Saat Bar/Baris Toko Diklik) -->
+  <!-- Modal Detail Karyawan per Toko (Saat Bar/Baris Toko Diklik) -->
   <div id="modalStoreDetail" class="modal-backdrop hidden">
     <div class="modal-card modal-card-lg">
       <div class="modal-head">
@@ -799,12 +811,12 @@
     </div>
   </div>
 
-  <!-- Modal DETAILS: Kalender 1 Bulan Crew (Dari Tombol DETAILS di Detail Toko) -->
+  <!-- Modal DETAILS: Kalender 1 Bulan Karyawan (Dari Tombol DETAILS di Detail Toko) -->
   <div id="modalCrewCalendar" class="modal-backdrop hidden">
     <div class="modal-card modal-card-lg">
       <div class="modal-head">
         <div>
-          <h3 id="modalCrewCalTitle">Detail Kalender Crew</h3>
+          <h3 id="modalCrewCalTitle">Detail Kalender Karyawan</h3>
           <p class="subtitle" id="modalCrewCalSub">-</p>
         </div>
         <button type="button" class="btn-icon-close" onclick="closeModal('modalCrewCalendar')">&times;</button>
@@ -856,17 +868,17 @@
     </div>
   </div>
 
-  <!-- Modal Catatan Jadwal Khusus (BKO / Cabang Lain) -->
+  <!-- Modal Status Jadwal Lainnya (Khusus Admin Only) -->
   <div id="modalJadwalBko" class="modal-backdrop hidden">
     <div class="modal-card">
       <div class="modal-head">
-        <h3>Keterangan Jadwal Khusus</h3>
+        <h3>Tambah Status Jadwal Lainnya</h3>
         <button type="button" class="btn-icon-close" onclick="closeModal('modalJadwalBko')">&times;</button>
       </div>
-      <p class="subtitle" id="jadwalBkoDesc">Masukkan keterangan jadwal (contoh: TAPOS SIANG, BKO DEPOK).</p>
+      <p class="subtitle" id="jadwalBkoDesc">Masukkan keterangan jadwal tambahan (contoh: OFF DAY, BKO TAPOS, CUTI).</p>
       <div class="form-group mt-12">
         <label for="jadwalBkoInput">Label Jadwal</label>
-        <input type="text" id="jadwalBkoInput" maxlength="30" placeholder="Contoh: TAPOS SIANG" />
+        <input type="text" id="jadwalBkoInput" maxlength="30" placeholder="Contoh: OFF DAY / BKO TAPOS" />
       </div>
       <div class="grid-2 mt-12">
         <button type="button" class="btn btn-outline" onclick="closeModal('modalJadwalBko')">Batal</button>
@@ -897,7 +909,7 @@
     </div>
   </div>
 
-  <!-- Modal Edit Absensi (Admin) -->
+  <!-- Modal Edit Absensi (Admin Only) -->
   <div id="modalEditRecord" class="modal-backdrop hidden">
     <div class="modal-card">
       <div class="modal-head">
@@ -922,13 +934,11 @@
               <option value="PAGI">PAGI</option>
               <option value="SIANG">SIANG</option>
               <option value="FULL DAY">FULL DAY</option>
-              <option value="FULL PAGI">FULL PAGI</option>
-              <option value="FULL SIANG">FULL SIANG</option>
             </select>
           </div>
         </div>
         <div class="form-group">
-          <label for="editNama">Nama Crew</label>
+          <label for="editNama">Nama Karyawan</label>
           <input type="text" id="editNama" required />
         </div>
         <div class="form-group">
@@ -962,18 +972,18 @@
     </div>
   </div>
 
-  <!-- Modal Tambah/Edit Crew (Admin Only) -->
+  <!-- Modal Tambah/Edit Karyawan (Admin Only) -->
   <div id="modalCrew" class="modal-backdrop hidden">
     <div class="modal-card">
       <div class="modal-head">
-        <h3 id="modalCrewTitle">Tambah Crew</h3>
+        <h3 id="modalCrewTitle">Tambah Karyawan</h3>
         <button type="button" class="btn-icon-close" onclick="closeModal('modalCrew')">&times;</button>
       </div>
       <form id="formCrew" class="stack-form">
         <input type="hidden" id="crewIdInput" />
 
         <div class="crew-photo-picker">
-          <div class="profile-avatar-md" id="crewPhotoPreview">C</div>
+          <div class="profile-avatar-md" id="crewPhotoPreview">K</div>
           <div class="crew-photo-btns">
             <button type="button" id="btnPickCrewPhoto" class="btn btn-outline btn-sm">Upload &amp; Atur Foto</button>
             <button type="button" id="btnClearCrewPhoto" class="btn-link-danger hidden">Hapus Foto</button>
@@ -982,24 +992,12 @@
         </div>
 
         <div class="form-group">
-          <label for="crewNamaInput">Nama Crew</label>
+          <label for="crewNamaInput">Nama Karyawan</label>
           <input type="text" id="crewNamaInput" required />
         </div>
-        <div class="grid-2">
-          <div class="form-group">
-            <label for="crewTokoInput">Cabang Toko</label>
-            <select id="crewTokoInput" required></select>
-          </div>
-          <div class="form-group">
-            <label for="crewShiftInput">Shift Utama</label>
-            <select id="crewShiftInput">
-              <option value="PAGI">PAGI</option>
-              <option value="SIANG">SIANG</option>
-              <option value="FULL DAY">FULL DAY</option>
-              <option value="FULL PAGI">FULL PAGI</option>
-              <option value="FULL SIANG">FULL SIANG</option>
-            </select>
-          </div>
+        <div class="form-group">
+          <label for="crewTokoInput">Cabang Toko</label>
+          <select id="crewTokoInput" required></select>
         </div>
         <div class="grid-2">
           <div class="form-group">
@@ -1013,10 +1011,18 @@
           <div class="form-group">
             <label for="crewPosisiInput">Posisi</label>
             <select id="crewPosisiInput">
-              <option value="CREW">Crew</option>
-              <option value="KEPALA TOKO">Kepala Toko</option>
+              <option value="Supervisor">Supervisor</option>
+              <option value="Kepala Toko">Kepala Toko</option>
+              <option value="Kepala Bakery">Kepala Bakery</option>
+              <option value="Crew Minuman">Crew Minuman</option>
+              <option value="Crew Bakery">Crew Bakery</option>
+              <option value="__CUSTOM__">+ Tambah Posisi Lainnya...</option>
             </select>
           </div>
+        </div>
+        <div id="crewPosisiCustomGroup" class="form-group hidden">
+          <label for="crewPosisiCustomInput">Posisi Tambahan</label>
+          <input type="text" id="crewPosisiCustomInput" maxlength="40" placeholder="Contoh: Trainee, Runner, Kasir..." />
         </div>
         <div class="form-group">
           <label for="crewTelpInput">Nomor Telepon Aktif</label>
@@ -1032,14 +1038,14 @@
         </div>
 
         <div class="form-group">
-          <label for="crewPinInput">PIN / Password Baru Crew</label>
+          <label for="crewPinInput">PIN / Password Baru Karyawan</label>
           <input type="text" id="crewPinInput" placeholder="Min. 4 karakter (kosongkan jika tidak ganti)" />
         </div>
         <label class="checkbox-row">
           <input type="checkbox" id="crewAktifInput" checked />
-          <span>Crew Aktif (bisa login &amp; absen)</span>
+          <span>Karyawan Aktif (bisa login &amp; absen)</span>
         </label>
-        <button type="submit" class="btn btn-primary btn-block">Simpan Crew</button>
+        <button type="submit" class="btn btn-primary btn-block">Simpan Karyawan</button>
       </form>
     </div>
   </div>
