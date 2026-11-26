@@ -1,4 +1,4 @@
-const CACHE_NAME = 'momoyo-absen-v2';
+const CACHE_NAME = 'momoyo-absen-v3';
 const APP_ASSETS = [
   './',
   './index.html',
@@ -29,7 +29,6 @@ self.addEventListener('fetch', (event) => {
   const url = new URL(event.request.url);
   if (url.origin !== self.location.origin) return;
 
-  // Network-first agar pembaruan kode langsung terasa, fallback ke cache saat offline
   event.respondWith(
     fetch(event.request)
       .then((res) => {
