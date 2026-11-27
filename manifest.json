@@ -1,13 +1,12 @@
 {
-  "name": "MOMOYO Absensi Crew",
+  "name": "MOMOYO ABSENSI KARYAWAN",
   "short_name": "MOMOYO Absen",
-  "description": "Aplikasi absensi selfie harian crew outlet MOMOYO",
+  "description": "Sistem Absensi, Jadwal Shift & Monitoring Outlet MOMOYO",
   "start_url": "./index.html",
   "display": "standalone",
-  "orientation": "portrait",
-  "background_color": "#F8FAFC",
-  "theme_color": "#E11D48",
-  "lang": "id",
+  "background_color": "#FFF5F6",
+  "theme_color": "#C81E2B",
+  "orientation": "portrait-primary",
   "icons": [
     {
       "src": "icon.svg",
