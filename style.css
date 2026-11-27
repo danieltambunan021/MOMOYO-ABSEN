@@ -16,6 +16,8 @@
   --primary-grad: linear-gradient(135deg, #E52B3B 0%, #C81E2B 100%);
   --primary-shadow: rgba(200, 30, 43, 0.28);
 
+  --berry: #9D174D;
+  --berry-soft: #FCE7F3;
   --info: #1D75D8;
   --info-soft: #EBF4FF;
   --success: #0D9668;
@@ -65,6 +67,7 @@ body {
 .mb-12 { margin-bottom: 12px; }
 .text-center { text-align: center; }
 .text-primary { color: var(--primary); }
+.text-berry { color: var(--berry); }
 .text-info { color: var(--info); }
 .text-success { color: var(--success); }
 .text-warning { color: var(--warning); }
@@ -118,7 +121,6 @@ body {
   to   { transform: translate3d(6px, 12px, 0) rotate(22deg); }
 }
 
-/* Stiker Maskot Melayang */
 .mascot-floaters {
   position: fixed;
   inset: 0;
@@ -146,7 +148,7 @@ body {
   display: block;
 }
 
-.ms-left-top  { top: 200px; left: 18px; animation-delay: 0s; }
+.ms-left-top  { top: 205px; left: 18px; animation-delay: 0s; }
 .ms-right-mid { top: 44%; right: 18px; animation-delay: 1.6s; }
 .ms-left-bot  { bottom: 130px; left: 20px; animation-delay: 2.8s; }
 
@@ -155,7 +157,6 @@ body {
   50%      { transform: translate3d(0, -10px, 0) rotate(3deg); }
 }
 
-/* Responsif stiker di HP agar tetap manis tanpa menutupi konten */
 @media (max-width: 1120px) {
   .mascot-sticker {
     width: 44px;
@@ -163,12 +164,12 @@ body {
     padding: 3px;
     opacity: 0.78;
   }
-  .ms-left-top  { top: 130px; left: -10px; }
+  .ms-left-top  { top: 136px; left: -10px; }
   .ms-right-mid { top: 48%; right: -10px; }
   .ms-left-bot  { bottom: 105px; left: -10px; }
 }
 
-/* ======================== BAR ATAS MERAH + LELEHAN ES KRIM ======================== */
+/* ======================== BAR ATAS MERAH + LELEHAN ES KRIM 3D GLOSSY ======================== */
 
 .momoyo-top-wrap {
   position: sticky;
@@ -178,12 +179,12 @@ body {
   pointer-events: none;
 }
 
+/* Satu warna dasar persis #C81E2B agar menyatu mulus dengan bar jendela PWA & pangkal lelehan */
 .momoyo-red-bar {
-  background: linear-gradient(90deg, #B91926 0%, #D22130 50%, #C41C2A 100%);
+  background: #C81E2B;
   color: #FFFFFF;
-  padding: calc(10px + env(safe-area-inset-top)) 16px 10px;
+  padding: calc(10px + env(safe-area-inset-top)) 16px 8px;
   pointer-events: auto;
-  box-shadow: 0 4px 16px rgba(180, 22, 36, 0.22);
 }
 
 .momoyo-bar-inner {
@@ -232,28 +233,60 @@ body {
   font-size: 0.78rem;
   font-weight: 800;
   letter-spacing: 0.8px;
-  opacity: 0.95;
+  opacity: 0.96;
   flex-shrink: 0;
+}
+
+.icecream-drip-wrap {
+  width: 100%;
+  margin-top: -1px;
+  line-height: 0;
+  overflow: hidden;
 }
 
 .icecream-drip-svg {
   display: block;
   width: 100%;
-  height: 18px;
-  margin-top: -1px;
-  filter: drop-shadow(0 3px 4px rgba(180, 22, 36, 0.14));
+  height: 24px;
+  filter: drop-shadow(0 4px 5px rgba(155, 18, 30, 0.2));
 }
 
 @media (min-width: 768px) {
   .momoyo-bar-title { font-size: 0.94rem; }
-  .icecream-drip-svg { height: 22px; }
+  .icecream-drip-svg { height: 30px; }
+}
+
+/* ======================== BACKGROUND SYNC BAR (INSTANT TAB SWITCH) ======================== */
+
+.bg-sync-bar {
+  position: fixed;
+  top: 0;
+  left: 0;
+  right: 0;
+  height: 3px;
+  z-index: 120;
+  overflow: hidden;
+  background: rgba(255, 255, 255, 0.25);
+  pointer-events: none;
+}
+.bg-sync-bar::after {
+  content: '';
+  position: absolute;
+  inset: 0;
+  width: 42%;
+  background: linear-gradient(90deg, transparent, #FFFFFF, #FFE4E7, transparent);
+  animation: syncSlide 1s linear infinite;
+}
+@keyframes syncSlide {
+  from { transform: translate3d(-100%, 0, 0); }
+  to   { transform: translate3d(260%, 0, 0); }
 }
 
 /* ======================== PULL-TO-REFRESH (60HZ) ======================== */
 
 .ptr-indicator {
   position: fixed;
-  top: calc(56px + env(safe-area-inset-top));
+  top: calc(58px + env(safe-area-inset-top));
   left: 0;
   right: 0;
   z-index: 60;
@@ -265,12 +298,8 @@ body {
   transition: opacity 0.18s ease, transform 0.22s cubic-bezier(0.22, 1, 0.36, 1);
   will-change: transform, opacity;
 }
-.ptr-indicator.is-dragging {
-  transition: none;
-}
-.ptr-indicator.is-visible {
-  opacity: 1;
-}
+.ptr-indicator.is-dragging { transition: none; }
+.ptr-indicator.is-visible { opacity: 1; }
 
 .ptr-pill {
   display: inline-flex;
@@ -310,7 +339,7 @@ body {
 
 .install-banner {
   position: sticky;
-  top: 52px;
+  top: 56px;
   z-index: 52;
   max-width: 980px;
   margin: 8px auto 0;
@@ -337,7 +366,7 @@ body {
 /* ======================== LOGIN ======================== */
 
 .login-screen {
-  min-height: calc(100vh - 76px);
+  min-height: calc(100vh - 84px);
   display: flex;
   align-items: center;
   justify-content: center;
@@ -365,7 +394,7 @@ body {
 }
 .brand-header h1 { font-size: 1.42rem; font-weight: 800; letter-spacing: 0.4px; }
 .subtitle { color: var(--muted); font-size: 0.82rem; }
-.date-kicker { font-size: 0.74rem; font-weight: 700; text-transform: uppercase; letter-spacing: 0.45px; margin-top: 2px; }
+.date-kicker { font-size: 0.74rem; font-weight: 700; text-transform: uppercase; letter-spacing: 0.45px; }
 
 .role-tabs {
   display: grid;
@@ -421,6 +450,11 @@ body {
   font-weight: 700;
   color: #3B4254;
   margin-bottom: 6px;
+}
+.label-hint {
+  font-size: 0.72rem;
+  font-weight: 500;
+  color: var(--muted);
 }
 
 input[type="text"], input[type="password"], input[type="number"],
@@ -538,6 +572,28 @@ input[readonly], select:disabled { background: #FAF6F7; color: #525B6D; }
   font-family: inherit;
 }
 
+/* Tombol 1-Klik WhatsApp */
+.btn-wa-sm {
+  display: inline-flex;
+  align-items: center;
+  gap: 5px;
+  border: 1px solid #A7F3D0;
+  background: #ECFDF5;
+  color: #047857;
+  padding: 5px 11px;
+  border-radius: 999px;
+  font-size: 0.72rem;
+  font-weight: 800;
+  cursor: pointer;
+  text-decoration: none;
+  font-family: inherit;
+  white-space: nowrap;
+  transition: transform 0.12s ease, background-color 0.14s ease;
+}
+.btn-wa-sm:active { transform: scale3d(0.95, 0.95, 1); }
+.btn-wa-sm:hover { background: #D1FAE5; }
+.btn-wa-sm svg { width: 13px; height: 13px; flex-shrink: 0; }
+
 .btn-svg {
   width: 18px;
   height: 18px;
@@ -551,6 +607,22 @@ input[readonly], select:disabled { background: #FAF6F7; color: #525B6D; }
   font-weight: 700;
   font-size: 0.8rem;
   cursor: pointer;
+  font-family: inherit;
+}
+
+.btn-link-muted {
+  display: block;
+  width: 100%;
+  border: none;
+  background: transparent;
+  color: var(--muted);
+  font-size: 0.78rem;
+  font-weight: 600;
+  text-align: center;
+  padding: 8px 4px 2px;
+  cursor: pointer;
+  font-family: inherit;
+  text-decoration: underline;
 }
 
 .btn-icon-close {
@@ -571,9 +643,7 @@ input[readonly], select:disabled { background: #FAF6F7; color: #525B6D; }
 
 .app-shell { padding-bottom: 112px; }
 
-.profile-strip {
-  padding: 6px 16px 4px;
-}
+.profile-strip { padding: 4px 16px 4px; }
 .profile-strip-inner {
   max-width: 980px;
   margin: 0 auto;
@@ -724,7 +794,7 @@ h3 { font-size: 0.98rem; font-weight: 800; }
   box-shadow: 0 6px 16px -4px var(--primary-shadow);
 }
 
-/* ======================== LAYAR ABSENSI ======================== */
+/* ======================== LAYAR ABSENSI & JEJAK PROGRES HARIAN ======================== */
 
 .hero-clock-card {
   text-align: center;
@@ -762,6 +832,79 @@ h3 { font-size: 0.98rem; font-weight: 800; }
   box-shadow: 0 6px 16px -4px var(--primary-shadow);
 }
 .clock-note { font-size: 0.74rem; color: var(--muted); }
+
+/* Jejak Progres Absen Harian */
+.progress-strip-card {
+  padding: 14px 16px;
+  margin-bottom: 14px;
+}
+.progress-strip-head {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 8px;
+  margin-bottom: 12px;
+}
+.progress-steps {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 6px;
+}
+.progress-step {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  min-width: 0;
+}
+.prog-dot {
+  width: 28px;
+  height: 28px;
+  border-radius: 50%;
+  background: #F4ECEE;
+  color: var(--muted);
+  font-size: 0.76rem;
+  font-weight: 800;
+  display: grid;
+  place-items: center;
+  flex-shrink: 0;
+  transition: background-color 0.2s ease, color 0.2s ease;
+}
+.progress-step.is-done .prog-dot {
+  background: var(--success);
+  color: #FFFFFF;
+}
+.progress-step.is-current .prog-dot {
+  background: var(--primary-grad);
+  color: #FFFFFF;
+  box-shadow: 0 4px 12px -2px var(--primary-shadow);
+}
+.prog-meta strong {
+  display: block;
+  font-size: 0.78rem;
+  line-height: 1.15;
+  color: var(--text);
+}
+.prog-meta small {
+  display: block;
+  font-size: 0.68rem;
+  color: var(--muted);
+  font-variant-numeric: tabular-nums;
+}
+.progress-step.is-done .prog-meta small {
+  color: var(--success);
+  font-weight: 700;
+}
+.progress-line {
+  flex: 1;
+  height: 3px;
+  border-radius: 99px;
+  background: #F1E4E7;
+  min-width: 12px;
+}
+.progress-line.is-done {
+  background: var(--success);
+}
 
 .schedule-today-banner {
   display: flex;
@@ -843,6 +986,57 @@ h3 { font-size: 0.98rem; font-weight: 800; }
   color: var(--muted);
 }
 
+/* Modal Kamera Live */
+.modal-camera-card { max-width: 460px; }
+.live-cam-stage {
+  position: relative;
+  width: 100%;
+  aspect-ratio: 3 / 4;
+  max-height: 58vh;
+  border-radius: 18px;
+  overflow: hidden;
+  background: #10141F;
+  border: 2px solid var(--border);
+}
+.live-cam-stage video {
+  width: 100%;
+  height: 100%;
+  object-fit: cover;
+  display: block;
+}
+.live-cam-stage video.is-mirrored {
+  transform: scaleX(-1);
+}
+.live-cam-watermark {
+  position: absolute;
+  left: 0;
+  right: 0;
+  bottom: 0;
+  padding: 18px 14px 12px;
+  background: linear-gradient(180deg, rgba(16, 20, 31, 0) 0%, rgba(16, 20, 31, 0.82) 100%);
+  color: #FFFFFF;
+  display: flex;
+  flex-direction: column;
+  gap: 2px;
+  pointer-events: none;
+}
+.live-cam-watermark strong {
+  font-size: 0.78rem;
+  letter-spacing: 0.4px;
+}
+.live-cam-watermark span {
+  font-size: 0.72rem;
+  color: #FDE68A;
+  font-weight: 700;
+  font-variant-numeric: tabular-nums;
+}
+.live-cam-controls {
+  display: grid;
+  grid-template-columns: auto 1fr;
+  gap: 10px;
+  align-items: center;
+}
+
 .info-banner {
   background: #F0F7FF;
   color: #1D4ED8;
@@ -866,24 +1060,94 @@ h3 { font-size: 0.98rem; font-weight: 800; }
   gap: 10px;
 }
 
-/* ======================== KPI CARDS & DASHBOARD ======================== */
+/* ======================== DASHBOARD & MANAGEMENT MONITORING ======================== */
 
+.live-status-row {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  flex-wrap: wrap;
+  margin-top: 2px;
+}
+.live-dot-pill {
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+  background: var(--success-soft);
+  color: var(--success);
+  padding: 3px 9px;
+  border-radius: 999px;
+  font-size: 0.7rem;
+  font-weight: 800;
+}
+.live-pulse-dot {
+  width: 7px;
+  height: 7px;
+  border-radius: 50%;
+  background: var(--success);
+  display: inline-block;
+  animation: livePulse 1.8s ease-in-out infinite;
+}
+@keyframes livePulse {
+  0%, 100% { opacity: 1; transform: scale(1); }
+  50%      { opacity: 0.4; transform: scale(0.82); }
+}
+
+/* Filter Cepat per Outlet */
+.outlet-filter-bar {
+  display: flex;
+  gap: 7px;
+  overflow-x: auto;
+  -webkit-overflow-scrolling: touch;
+  padding: 2px 0 12px;
+  margin-bottom: 4px;
+  scrollbar-width: none;
+}
+.outlet-filter-bar::-webkit-scrollbar { display: none; }
+
+.outlet-pill {
+  border: 1px solid #EFE0E4;
+  background: #FFFFFF;
+  color: #525A6D;
+  padding: 7px 14px;
+  border-radius: 999px;
+  font-family: inherit;
+  font-size: 0.76rem;
+  font-weight: 700;
+  white-space: nowrap;
+  cursor: pointer;
+  flex-shrink: 0;
+  box-shadow: 0 2px 8px rgba(175, 42, 58, 0.05);
+  transition: background-color 0.16s ease, color 0.16s ease, transform 0.12s ease;
+}
+.outlet-pill:active { transform: scale3d(0.95, 0.95, 1); }
+.outlet-pill.active {
+  background: var(--primary-grad);
+  border-color: transparent;
+  color: #FFFFFF;
+  box-shadow: 0 6px 14px -4px var(--primary-shadow);
+}
+
+/* 6 Kartu KPI */
 .kpi-grid {
   display: grid;
   grid-template-columns: repeat(2, 1fr);
   gap: 10px;
   margin-bottom: 16px;
 }
-@media (min-width: 720px) {
-  .kpi-grid-5 { grid-template-columns: repeat(5, 1fr); gap: 12px; }
+@media (min-width: 600px) {
+  .kpi-grid-6 { grid-template-columns: repeat(3, 1fr); gap: 11px; }
+}
+@media (min-width: 860px) {
+  .kpi-grid-6 { grid-template-columns: repeat(6, 1fr); gap: 10px; }
 }
 
 .kpi-card {
   position: relative;
-  padding: 14px 14px 18px;
+  padding: 14px 13px 18px;
   display: flex;
   flex-direction: column;
-  gap: 6px;
+  gap: 5px;
   overflow: hidden;
 }
 .kpi-icon-box {
@@ -908,55 +1172,166 @@ h3 { font-size: 0.98rem; font-weight: 800; }
   display: block;
 }
 
-.kpi-masuk .kpi-icon-box     { background: var(--primary-soft); color: var(--primary); }
-.kpi-istirahat .kpi-icon-box { background: var(--info-soft); color: var(--info); }
-.kpi-pulang .kpi-icon-box    { background: var(--success-soft); color: var(--success); }
-.kpi-belum .kpi-icon-box     { background: var(--warning-soft); color: var(--warning); }
-.kpi-telat .kpi-icon-box     { background: var(--danger-soft); color: var(--danger); }
+.kpi-masuk .kpi-icon-box         { background: var(--primary-soft); color: var(--primary); }
+.kpi-istirahat .kpi-icon-box     { background: var(--info-soft); color: var(--info); }
+.kpi-pulang .kpi-icon-box        { background: var(--success-soft); color: var(--success); }
+.kpi-absen-missing .kpi-icon-box { background: var(--berry-soft); color: var(--berry); }
+.kpi-belum .kpi-icon-box         { background: var(--warning-soft); color: var(--warning); }
+.kpi-telat .kpi-icon-box         { background: var(--danger-soft); color: var(--danger); }
 
-.kpi-label { font-size: 0.76rem; color: var(--muted); font-weight: 600; }
-.kpi-value { font-size: 1.7rem; font-weight: 800; line-height: 1.1; }
+.kpi-label { font-size: 0.74rem; color: var(--muted); font-weight: 600; }
+.kpi-value { font-size: 1.65rem; font-weight: 800; line-height: 1.1; }
 
 .kpi-accent-bar {
   position: absolute;
-  left: 14px;
-  right: 14px;
+  left: 13px;
+  right: 13px;
   bottom: 9px;
   height: 3.5px;
   border-radius: 99px;
 }
-.kpi-masuk .kpi-accent-bar     { background: var(--primary); }
-.kpi-istirahat .kpi-accent-bar { background: var(--info); }
-.kpi-pulang .kpi-accent-bar    { background: var(--success); }
-.kpi-belum .kpi-accent-bar     { background: var(--warning); }
-.kpi-telat .kpi-accent-bar     { background: var(--danger); }
+.kpi-masuk .kpi-accent-bar         { background: var(--primary); }
+.kpi-istirahat .kpi-accent-bar     { background: var(--info); }
+.kpi-pulang .kpi-accent-bar        { background: var(--success); }
+.kpi-absen-missing .kpi-accent-bar { background: var(--berry); }
+.kpi-belum .kpi-accent-bar         { background: var(--warning); }
+.kpi-telat .kpi-accent-bar         { background: var(--danger); }
 
-/* Kartu Belum Absen Pulang & Istirahat Live */
-.warning-card {
-  background: linear-gradient(135deg, #FFFDF0 0%, #FEF5CC 100%);
-  border-color: #FDE68A;
+/* Accordion Aktivitas Live (Ringkas 1 Baris, Buka Saat Diketuk) */
+.live-accordions-stack {
+  display: flex;
+  flex-direction: column;
+  gap: 10px;
   margin-bottom: 16px;
 }
-.warning-card h3 { color: #B45309; margin-bottom: 10px; }
 
-.info-card {
-  background: linear-gradient(135deg, #F4FAFF 0%, #E6F3FF 100%);
-  border-color: #BAE6FD;
-  margin-bottom: 16px;
+.acc-card {
+  padding: 0;
+  overflow: hidden;
 }
-.info-card h3 { color: #0369A1; margin-bottom: 10px; }
+.acc-berry  { background: linear-gradient(135deg, #FFF7FB 0%, #FCE7F3 100%); border-color: #FBCFE8; }
+.acc-info   { background: linear-gradient(135deg, #F4FAFF 0%, #E6F3FF 100%); border-color: #BAE6FD; }
+.acc-warn   { background: linear-gradient(135deg, #FFFDF0 0%, #FEF5CC 100%); border-color: #FDE68A; }
+.acc-danger { background: linear-gradient(135deg, #FFF6F7 0%, #FFE4E6 100%); border-color: #FECDD3; }
+
+.acc-head {
+  width: 100%;
+  border: none;
+  background: transparent;
+  padding: 13px 16px;
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 10px;
+  text-align: left;
+  cursor: pointer;
+  font-family: inherit;
+}
+.acc-head-left strong {
+  display: block;
+  font-size: 0.92rem;
+  font-weight: 800;
+  color: var(--text);
+}
+.acc-berry .acc-head-left strong  { color: #831843; }
+.acc-info .acc-head-left strong   { color: #0369A1; }
+.acc-warn .acc-head-left strong   { color: #B45309; }
+.acc-danger .acc-head-left strong { color: #BE123C; }
+
+.acc-head-right {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  flex-shrink: 0;
+}
+.acc-chevron {
+  font-size: 1.3rem;
+  font-weight: 700;
+  color: var(--muted);
+  line-height: 1;
+  transition: transform 0.18s ease;
+  display: inline-block;
+}
+.acc-head.is-open .acc-chevron {
+  transform: rotate(90deg);
+}
+.acc-body {
+  padding: 0 14px 14px;
+}
 
 .mini-list { display: flex; flex-direction: column; gap: 8px; }
 .mini-item {
   background: #FFFFFF;
   border-radius: 14px;
-  padding: 11px 14px;
+  padding: 11px 13px;
   display: flex;
   justify-content: space-between;
   align-items: center;
   gap: 10px;
   font-size: 0.84rem;
   box-shadow: 0 2px 8px rgba(15, 23, 42, 0.04);
+  flex-wrap: wrap;
+}
+.mini-item-actions {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  flex-wrap: wrap;
+}
+
+/* 1 Kartu Tombol Ringkas Detail Absensi Hari Ini */
+.today-summary-cta {
+  width: 100%;
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 12px;
+  text-align: left;
+  cursor: pointer;
+  font-family: inherit;
+  border: 1.5px solid #F7D4DA;
+  background: linear-gradient(135deg, #FFFFFF 0%, #FFF3F5 100%);
+  transition: transform 0.14s ease, border-color 0.16s ease;
+  margin-bottom: 16px;
+}
+.today-summary-cta:hover { border-color: var(--primary); }
+.today-summary-cta:active { transform: scale3d(0.985, 0.985, 1); }
+
+.today-cta-left {
+  display: flex;
+  align-items: center;
+  gap: 12px;
+  min-width: 0;
+}
+.today-cta-left strong {
+  display: block;
+  font-size: 0.95rem;
+  color: var(--text);
+}
+.today-cta-icon {
+  width: 42px;
+  height: 42px;
+  border-radius: 14px;
+  background: var(--primary-grad);
+  color: #FFFFFF;
+  display: grid;
+  place-items: center;
+  flex-shrink: 0;
+  box-shadow: 0 6px 14px -4px var(--primary-shadow);
+}
+.today-cta-icon svg { width: 20px; height: 20px; }
+
+.today-cta-right {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  flex-shrink: 0;
+}
+.today-cta-link {
+  font-size: 0.8rem;
+  font-weight: 800;
+  color: var(--primary);
+  white-space: nowrap;
 }
 
 .section-card { margin-bottom: 16px; }
@@ -1056,9 +1431,12 @@ h3 { font-size: 0.98rem; font-weight: 800; }
   font-size: 0.76rem;
   font-weight: 800;
 }
-.num-pill-warn   { background: var(--warning-soft); color: #B45309; }
-.num-pill-danger { background: var(--danger-soft); color: var(--danger); }
-.num-pill-ok     { background: var(--success-soft); color: var(--success); }
+.num-pill-warn    { background: var(--warning-soft); color: #B45309; }
+.num-pill-danger  { background: var(--danger-soft); color: var(--danger); }
+.num-pill-ok      { background: var(--success-soft); color: var(--success); }
+.num-pill-info    { background: var(--info-soft); color: var(--info); }
+.num-pill-berry   { background: var(--berry-soft); color: var(--berry); }
+.num-pill-primary { background: var(--primary-soft); color: var(--primary); }
 
 /* ======================== INSIGHT & REKAP GAJI ======================== */
 
@@ -1154,7 +1532,7 @@ h3 { font-size: 0.98rem; font-weight: 800; }
 .mascot-empty-box strong { font-size: 0.9rem; color: var(--text); }
 .mascot-empty-box span { font-size: 0.78rem; color: var(--muted); }
 
-/* ======================== JADWAL SHIFT (WARNA SELARAS TEMA MOMOYO) ======================== */
+/* ======================== JADWAL SHIFT (PALET SOFT BLUSH & ICE CREAM MOMOYO) ======================== */
 
 .jadwal-filter-grid {
   display: grid;
@@ -1172,6 +1550,12 @@ h3 { font-size: 0.98rem; font-weight: 800; }
   padding-top: 12px;
   border-top: 1px solid #F5ECEE;
 }
+.jadwal-admin-btns {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  flex-wrap: wrap;
+}
 
 .jadwal-legend {
   display: flex;
@@ -1179,7 +1563,7 @@ h3 { font-size: 0.98rem; font-weight: 800; }
   gap: 6px;
 }
 
-/* Pil Status Pastel Lembut Selaras Soft Blush */
+/* Pil Status Selaras Tema Es Krim Soft Blush MOMOYO (Admin, Karyawan & Monitoring) */
 .sched-tag {
   display: inline-block;
   padding: 5px 11px;
@@ -1187,14 +1571,15 @@ h3 { font-size: 0.98rem; font-weight: 800; }
   font-size: 0.7rem;
   font-weight: 800;
   letter-spacing: 0.3px;
+  border: 1px solid transparent;
 }
-.st-pagi    { background: #DCFCE7; color: #166534; }
-.st-siang   { background: #FEF3C7; color: #92400E; }
-.st-fullday { background: #DBEAFE; color: #1E40AF; }
-.st-izin    { background: #FFEDD5; color: #9A3412; }
-.st-sakit   { background: #FFE4E6; color: #BE123C; }
-.st-lainnya { background: #F3E8FF; color: #7E22CE; }
-.st-empty   { background: #F5F2F4; color: #94A3B8; }
+.st-pagi    { background: #FFE4EC; color: #9D174D; border-color: #FBCFE8; }
+.st-siang   { background: #FFEDD8; color: #9A3412; border-color: #FED7AA; }
+.st-fullday { background: #FFD6DC; color: #B91C2B; border-color: #FDA4AF; }
+.st-izin    { background: #F5EBE0; color: #7C4A2D; border-color: #E6D3C1; }
+.st-sakit   { background: #FECDD3; color: #881337; border-color: #FB7185; }
+.st-lainnya { background: #F3E2EE; color: #701A5C; border-color: #E5C2DC; }
+.st-empty   { background: #F6F1F3; color: #949BAA; border-color: transparent; }
 
 .jadwal-matrix-wrap {
   max-height: 62vh;
@@ -1218,11 +1603,8 @@ h3 { font-size: 0.98rem; font-weight: 800; }
   text-align: center;
   white-space: nowrap;
 }
-.jadwal-table tbody tr {
-  contain: layout style;
-}
+.jadwal-table tbody tr { contain: layout style; }
 
-/* Header Gradasi Selaras MOMOYO (Tanpa Cokelat / Biru Mencolok) */
 .jadwal-table thead th {
   position: sticky;
   top: 0;
@@ -1274,17 +1656,108 @@ h3 { font-size: 0.98rem; font-weight: 800; }
   font-size: 0.72rem !important;
   font-weight: 800;
   border-radius: 10px !important;
-  border-color: transparent !important;
+  border-width: 1px !important;
   text-align: center;
   cursor: pointer;
 }
-.jadwal-cell-select.st-empty   { background: #F5F2F4; color: #8B93A5; }
-.jadwal-cell-select.st-pagi    { background: #DCFCE7; color: #166534; }
-.jadwal-cell-select.st-siang   { background: #FEF3C7; color: #92400E; }
-.jadwal-cell-select.st-fullday { background: #DBEAFE; color: #1E40AF; }
-.jadwal-cell-select.st-izin    { background: #FFEDD5; color: #9A3412; }
-.jadwal-cell-select.st-sakit   { background: #FFE4E6; color: #BE123C; }
-.jadwal-cell-select.st-lainnya { background: #F3E8FF; color: #7E22CE; }
+.jadwal-cell-select.st-empty   { background: #F6F1F3; color: #8B93A5; border-color: transparent !important; }
+.jadwal-cell-select.st-pagi    { background: #FFE4EC; color: #9D174D; border-color: #FBCFE8 !important; }
+.jadwal-cell-select.st-siang   { background: #FFEDD8; color: #9A3412; border-color: #FED7AA !important; }
+.jadwal-cell-select.st-fullday { background: #FFD6DC; color: #B91C2B; border-color: #FDA4AF !important; }
+.jadwal-cell-select.st-izin    { background: #F5EBE0; color: #7C4A2D; border-color: #E6D3C1 !important; }
+.jadwal-cell-select.st-sakit   { background: #FECDD3; color: #881337; border-color: #FB7185 !important; }
+.jadwal-cell-select.st-lainnya { background: #F3E2EE; color: #701A5C; border-color: #E5C2DC !important; }
+
+/* ======================== KELOLA OUTLET & KARYAWAN TERPADU ======================== */
+
+.kelola-top-btns {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  flex-wrap: wrap;
+}
+.manage-search-row {
+  margin-top: 6px;
+}
+
+.outlet-manage-card {
+  background: #FFFFFF;
+  border: 1px solid #F2E2E6;
+  border-radius: 18px;
+  overflow: hidden;
+  box-shadow: var(--shadow-row);
+}
+
+.outlet-manage-head {
+  padding: 14px 16px;
+  display: flex;
+  flex-direction: column;
+  gap: 10px;
+  background: linear-gradient(180deg, #FFFFFF 0%, #FFF9FA 100%);
+}
+
+.outlet-manage-top {
+  display: flex;
+  align-items: flex-start;
+  justify-content: space-between;
+  gap: 10px;
+  cursor: pointer;
+}
+
+.outlet-manage-title-wrap {
+  display: flex;
+  align-items: center;
+  gap: 11px;
+  min-width: 0;
+}
+
+.outlet-manage-badges {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  flex-wrap: wrap;
+  justify-content: flex-end;
+  flex-shrink: 0;
+}
+
+.outlet-count-pill {
+  display: inline-flex;
+  align-items: center;
+  gap: 5px;
+  background: var(--primary-soft);
+  color: var(--primary);
+  padding: 4px 10px;
+  border-radius: 999px;
+  font-size: 0.72rem;
+  font-weight: 800;
+}
+
+.outlet-manage-actions {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 8px;
+  flex-wrap: wrap;
+  padding-top: 10px;
+  border-top: 1px solid #F6EBEE;
+}
+
+.outlet-crew-panel {
+  padding: 12px 14px 14px;
+  background: #FFF9FA;
+  border-top: 1px solid #F3E4E8;
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+}
+
+.outlet-crew-item {
+  background: #FFFFFF;
+  border: 1px solid #F4E7EA;
+  border-radius: 14px;
+  padding: 12px 14px;
+  box-shadow: 0 2px 8px rgba(175, 42, 58, 0.04);
+}
 
 /* ======================== KALENDER KARYAWAN ======================== */
 
@@ -1369,7 +1842,7 @@ h3 { font-size: 0.98rem; font-weight: 800; }
 .dot-ok { background: var(--success); }
 .dot-warn { background: var(--warning); }
 .dot-late { background: var(--danger); }
-.dot-sched { background: #8B5CF6; }
+.dot-sched { background: var(--berry); }
 .cal-day.selected .dot { background: #FFFFFF; }
 
 .cal-legend {
@@ -1487,7 +1960,7 @@ h3 { font-size: 0.98rem; font-weight: 800; }
   padding-top: 10px;
   border-top: 1px solid #F6ECEE;
 }
-.record-actions { display: flex; gap: 6px; }
+.record-actions { display: flex; gap: 6px; flex-wrap: wrap; }
 
 .badge {
   display: inline-block;
@@ -1504,6 +1977,7 @@ h3 { font-size: 0.98rem; font-weight: 800; }
 .badge-danger    { background: var(--danger-soft); color: var(--danger); }
 .badge-neutral   { background: #F4F1F3; color: #525B6D; }
 .badge-warning   { background: var(--warning-soft); color: #B45309; }
+.badge-berry     { background: var(--berry-soft); color: var(--berry); }
 
 .empty-state {
   text-align: center;
@@ -1523,7 +1997,19 @@ h3 { font-size: 0.98rem; font-weight: 800; }
   border-radius: 16px;
   padding: 14px;
 }
-.crew-stat-header { display: flex; align-items: center; gap: 10px; margin-bottom: 10px; }
+.crew-stat-header {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 10px;
+  margin-bottom: 10px;
+}
+.crew-stat-header-left {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  min-width: 0;
+}
 .crew-stat-grid { display: grid; grid-template-columns: repeat(3, 1fr); gap: 6px; }
 @media (min-width: 480px) { .crew-stat-grid { grid-template-columns: repeat(5, 1fr); } }
 .crew-stat-pill {
@@ -1607,13 +2093,8 @@ h3 { font-size: 0.98rem; font-weight: 800; }
 .nav-item:active { transform: scale3d(0.93, 0.93, 1); }
 .nav-item.active { color: var(--primary); }
 
-.nav-svg {
-  width: 20px;
-  height: 20px;
-  display: block;
-}
+.nav-svg { width: 20px; height: 20px; display: block; }
 
-/* Tombol Absen Bulat Merah Menonjol di Tengah */
 .nav-item.nav-center {
   position: relative;
   margin-top: -26px;
@@ -1720,6 +2201,7 @@ h3 { font-size: 0.98rem; font-weight: 800; }
   from { opacity: 0; }
   to   { opacity: 1; }
 }
+#modalLiveCamera { z-index: 94; }
 #modalCropPhoto { z-index: 95; }
 #modalPhoto { z-index: 96; }
 #modalJadwalBko { z-index: 92; }
@@ -1813,7 +2295,7 @@ h3 { font-size: 0.98rem; font-weight: 800; }
 
 .toast {
   position: fixed;
-  top: calc(64px + env(safe-area-inset-top));
+  top: calc(68px + env(safe-area-inset-top));
   left: 50%;
   transform: translate3d(-50%, 0, 0);
   z-index: 115;
