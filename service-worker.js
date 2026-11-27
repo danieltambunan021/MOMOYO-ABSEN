@@ -1,4 +1,4 @@
-const CACHE_NAME = 'momoyo-absen-v4';
+const CACHE_NAME = 'momoyo-absen-v5';
 const APP_ASSETS = [
   './',
   './index.html',
@@ -32,8 +32,10 @@ self.addEventListener('fetch', (event) => {
   event.respondWith(
     fetch(event.request)
       .then((res) => {
-        const clone = res.clone();
-        caches.open(CACHE_NAME).then((cache) => cache.put(event.request, clone));
+        if (res && res.ok) {
+          const clone = res.clone();
+          caches.open(CACHE_NAME).then((cache) => cache.put(event.request, clone));
+        }
         return res;
       })
       .catch(() => caches.match(event.request))
