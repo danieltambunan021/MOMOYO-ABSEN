@@ -1,12 +1,15 @@
 /**
  * ============================================================
- * MOMOYO ABSENSI KARYAWAN — FRONTEND APPLICATION v4.0 (PWA)
+ * MOMOYO ABSENSI KARYAWAN — FRONTEND APPLICATION v4.1 (PWA)
  * ============================================================
- * - Desain seragam Soft Blush Es Krim (HP & Laptop) tanpa fitur Tema/Wallpaper.
- * - Pull-to-Refresh 60Hz (requestAnimationFrame + passive touch).
- * - Grafik 3D glossy (Batang per Toko & Kurva Tren 7 Hari).
- * - Watermark waktu aktual (Foto & Submit) tertanam otomatis di foto selfie.
- * - Kompatibel penuh dengan Backend Code.gs v3.1.
+ * - Kamera Selfie Live dalam aplikasi + Watermark waktu aktual (Foto & Submit).
+ * - Absen Pintar: Jejak Progres Harian + otomatis arahkan ke tahap berikutnya.
+ * - Dashboard & Monitoring: Filter cepat per outlet, Auto-Refresh 60 detik,
+ *   deteksi Belum Hadir/Izin/Sakit, Accordion ringkas, 1-Klik WhatsApp,
+ *   dan 1 kartu tombol Detail Absensi Hari Ini.
+ * - Jadwal Shift: Tombol "Salin Minggu Lalu" (termasuk lintas bulan).
+ * - Kelola: Outlet & Karyawan terpadu per cabang + Edit ID Karyawan.
+ * - Pindah tab instan (Instant Cache) tanpa layar loading penuh.
  */
 const API_URL = 'https://script.google.com/macros/s/AKfycbyrbl6vBqA1uatZYi2kEn6gv5AxwrB4LEnmEIwh5NW0DwCowh0so6uZOIbzV3F8wVeg/exec';
 
@@ -40,7 +43,6 @@ const DEFAULT_GREETINGS = {
   pulang: 'PEKERJAAN SELESAI, HATI HATI DI JALAN'
 };
 
-// Maskot cadangan SVG otomatis aktif jika file mascot.png belum diunggah ke GitHub
 const MASCOT_FALLBACK_SVG = 'data:image/svg+xml;charset=UTF-8,' + encodeURIComponent(
   '<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 120 120">' +
   '<circle cx="60" cy="60" r="58" fill="#FFF0F2" stroke="#C81E2B" stroke-width="4"/>' +
@@ -61,6 +63,8 @@ const MASCOT_FALLBACK_SVG = 'data:image/svg+xml;charset=UTF-8,' + encodeURICompo
   '</svg>'
 );
 
+const WA_ICON_SVG = '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M21 11.5a8.38 8.38 0 0 1-.9 3.8 8.5 8.5 0 0 1-7.6 4.7 8.38 8.38 0 0 1-3.8-.9L3 21l1.9-5.7a8.38 8.38 0 0 1-.9-3.8 8.5 8.5 0 0 1 4.7-7.6 8.38 8.38 0 0 1 3.8-.9h.5a8.48 8.48 0 0 1 8 8v.5z"/></svg>';
+
 const NAV_ICONS = {
   dashboard: '<svg class="nav-svg" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><rect x="3" y="3" width="7" height="7" rx="1.5"/><rect x="14" y="3" width="7" height="7" rx="1.5"/><rect x="3" y="14" width="7" height="7" rx="1.5"/><rect x="14" y="14" width="7" height="7" rx="1.5"/></svg>',
   jadwal: '<svg class="nav-svg" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><rect x="3" y="4" width="18" height="18" rx="3"/><line x1="16" y1="2" x2="16" y2="6"/><line x1="8" y1="2" x2="8" y2="6"/><line x1="3" y1="10" x2="21" y2="10"/></svg>',
@@ -80,11 +84,13 @@ const state = {
   greetings: JSON.parse(localStorage.getItem('momoyo_greetings') || JSON.stringify(DEFAULT_GREETINGS)),
   activeView: '',
   todaySchedule: null,
+  todayProgress: null,
+  userManualJenisPick: false,
   publicStores: [],
   publicCrews: [],
   stores: [],
   crews: [],
-  // Foto absensi + waktu ambil aktual (untuk watermark permanen)
+  // Foto absensi + waktu aktual
   photoRawBase64: '',
   photoCapturedAt: null,
   pendingDelete: null,
@@ -94,7 +100,19 @@ const state = {
   serverOffsetMs: 0,
   myBreak: null,
   storeBreaks: [],
-  dashActiveBreaks: [],
+  // Dashboard & Monitoring
+  dashData: null,
+  dashOutletFilter: 'SEMUA',
+  dashAutoRefreshTimer: null,
+  dashLastUpdatedAt: null,
+  // Instant cache antar tab
+  cache: {
+    insight: {},
+    jadwal: {},
+    masterLoaded: false
+  },
+  bgSyncCount: 0,
+  // Riwayat & Kalender
   historyRecords: [],
   historyMode: 'list',
   calYear: nowInit.getFullYear(),
@@ -109,13 +127,22 @@ const state = {
   adminCalRecordsByDate: {},
   adminCalSchedulesByDate: {},
   adminCalSelectedDate: '',
+  // Jadwal
   jadwalStore: '',
   jadwalCrews: [],
   jadwalMap: {},
   jadwalDirty: {},
   jadwalBkoPending: null,
+  // Kelola Outlet & Karyawan
+  openManageOutlets: {},
   crewPhotoDraft: '',
   crewClearPhoto: false
+};
+
+const liveCam = {
+  stream: null,
+  facingMode: 'user',
+  active: false
 };
 
 const cropper = {
@@ -142,6 +169,14 @@ document.addEventListener('DOMContentLoaded', () => {
   bindEvents();
   initCropperEvents();
   initMonthYearSelectors();
+
+  document.addEventListener('visibilitychange', () => {
+    if (document.hidden) {
+      stopLiveCamera();
+    } else if (state.activeView === 'viewDashboard' && state.user) {
+      loadDashboard(true);
+    }
+  });
 
   const params = new URLSearchParams(window.location.search);
   const wantMonitor = params.has('monitoring') || window.location.hash === '#monitoring';
@@ -216,10 +251,23 @@ function initClock() {
     if (dateEl) dateEl.textContent = `${hari}, ${tgl} ${bln} ${thn}`;
     if (clockEl) clockEl.textContent = jam;
 
+    if (liveCam.active) {
+      const camTime = document.getElementById('liveCamTimeOverlay');
+      if (camTime) camTime.textContent = `${hari}, ${pad2(tgl)} ${bln} ${thn} • ${jam} WIB`;
+    }
+
     tickAllBreakCountdowns();
   };
   render();
   setInterval(render, 1000);
+}
+
+/* ======================== BACKGROUND SYNC INDICATOR ======================== */
+
+function setBgSync(active) {
+  state.bgSyncCount = Math.max(0, state.bgSyncCount + (active ? 1 : -1));
+  const bar = document.getElementById('bgSyncBar');
+  if (bar) bar.classList.toggle('hidden', state.bgSyncCount === 0);
 }
 
 /* ======================== PULL-TO-REFRESH (60HZ SMOOTH) ======================== */
@@ -240,7 +288,7 @@ function initPullToRefresh() {
   const isBlockedTarget = (target) => {
     if (!target) return true;
     if (document.querySelector('.modal-backdrop:not(.hidden)')) return true;
-    if (target.closest('.jadwal-matrix-wrap, .table-wrap, .crop-stage, input, select, textarea')) return true;
+    if (target.closest('.jadwal-matrix-wrap, .table-wrap, .outlet-filter-bar, .crop-stage, input, select, textarea')) return true;
     return false;
   };
 
@@ -249,14 +297,8 @@ function initPullToRefresh() {
     const clamped = Math.max(0, Math.min(96, pullDist));
     const yPos = -48 + clamped * 0.72;
     indicator.style.transform = `translate3d(0, ${yPos}px, 0)`;
-    if (ptrSpinner) {
-      ptrSpinner.style.transform = `rotate(${clamped * 4}deg)`;
-    }
-    if (clamped >= 56) {
-      ptrText.textContent = 'Lepas untuk muat ulang';
-    } else {
-      ptrText.textContent = 'Tarik untuk muat ulang';
-    }
+    if (ptrSpinner) ptrSpinner.style.transform = `rotate(${clamped * 4}deg)`;
+    ptrText.textContent = clamped >= 56 ? 'Lepas untuk muat ulang' : 'Tarik untuk muat ulang';
   };
 
   window.addEventListener('touchstart', (e) => {
@@ -330,11 +372,11 @@ function initPullToRefresh() {
 async function refreshActiveView(silent = false) {
   const v = state.activeView;
   if (v === 'viewDashboard') return loadDashboard(silent);
-  if (v === 'viewJadwal') return loadJadwalView();
+  if (v === 'viewJadwal') return loadJadwalView(true);
   if (v === 'viewRiwayat') return loadHistory();
   if (v === 'viewKalenderSaya') return loadCrewCalendar();
-  if (v === 'viewInsight') return loadInsights(null, silent);
-  if (v === 'viewKelola') return loadMasterData(silent);
+  if (v === 'viewInsight') return loadInsights(null, true);
+  if (v === 'viewKelola') return loadMasterData(true);
   if (v === 'viewAbsen') {
     await refreshMyProfileSilently();
     return loadActiveBreaksForAbsen();
@@ -392,7 +434,7 @@ async function saveAbsenGreetings(e) {
   }
 }
 
-/* ======================== API HELPER ======================== */
+/* ======================== API HELPER & 1-KLIK WHATSAPP ======================== */
 
 async function apiCall(payload, timeoutMs = 35000) {
   if (!navigator.onLine) {
@@ -442,6 +484,21 @@ async function apiCall(payload, timeoutMs = 35000) {
   }
 }
 
+function normalizeWaPhone(rawPhone) {
+  const digits = String(rawPhone || '').replace(/\D/g, '');
+  if (digits.length < 9) return '';
+  if (digits.startsWith('0')) return '62' + digits.slice(1);
+  if (digits.startsWith('8')) return '62' + digits;
+  return digits;
+}
+
+function buildWaButtonHtml(rawPhone, message, label = 'WA') {
+  const phone = normalizeWaPhone(rawPhone);
+  if (!phone) return '';
+  const url = `https://wa.me/${phone}?text=${encodeURIComponent(message || '')}`;
+  return `<a class="btn-wa-sm" href="${esc(url)}" target="_blank" rel="noopener" onclick="event.stopPropagation()">${WA_ICON_SVG}<span>${esc(label)}</span></a>`;
+}
+
 /* ======================== AUTH, LOGIN & MANAGEMENT MONITORING ======================== */
 
 async function loadPublicInit() {
@@ -487,6 +544,8 @@ async function handleLoginCrew(e) {
   try {
     const res = await apiCall({ action: 'login', role: 'CREW', crewId, pin });
     state.todaySchedule = res.todaySchedule || null;
+    state.todayProgress = res.todayProgress || null;
+    state.userManualJenisPick = false;
     saveSession(res.token, res.user, res.stores);
     document.getElementById('loginPin').value = '';
     enterApp();
@@ -506,6 +565,8 @@ async function handleLoginAdmin(e) {
   try {
     const res = await apiCall({ action: 'login', role: 'ADMIN', password });
     state.todaySchedule = null;
+    state.todayProgress = null;
+    state.userManualJenisPick = false;
     saveSession(res.token, res.user, res.stores);
     document.getElementById('loginAdminPass').value = '';
     enterApp();
@@ -527,6 +588,7 @@ function enterMonitoringMode() {
     fotoProfil: ''
   };
   state.todaySchedule = null;
+  state.todayProgress = null;
   enterApp();
 }
 
@@ -540,6 +602,8 @@ function saveSession(token, user, stores) {
 }
 
 async function handleLogout() {
+  stopDashboardAutoRefresh();
+  stopLiveCamera();
   if (state.user && state.user.role === 'MONITORING') {
     handleForceLogout('');
     return;
@@ -549,10 +613,16 @@ async function handleLogout() {
 }
 
 function handleForceLogout(msg) {
+  stopDashboardAutoRefresh();
+  stopLiveCamera();
   state.token = '';
   state.user = null;
   state.todaySchedule = null;
+  state.todayProgress = null;
   state.myBreak = null;
+  state.dashData = null;
+  state.dashOutletFilter = 'SEMUA';
+  state.cache = { insight: {}, jadwal: {}, masterLoaded: false };
   localStorage.removeItem('momoyo_token');
   localStorage.removeItem('momoyo_user');
   document.getElementById('appShell').classList.add('hidden');
@@ -641,6 +711,10 @@ async function refreshMyProfileSilently() {
     if (res.todaySchedule !== undefined) {
       state.todaySchedule = res.todaySchedule;
       applyTodayScheduleToForm();
+    }
+    if (res.todayProgress !== undefined) {
+      state.todayProgress = res.todayProgress;
+      renderTodayProgress(true);
     }
   } catch {}
 }
@@ -881,7 +955,7 @@ function initCropperEvents() {
   });
 }
 
-/* ======================== FLOATING PILL BOTTOM NAVIGATION (SVG) ======================== */
+/* ======================== FLOATING PILL BOTTOM NAVIGATION ======================== */
 
 function buildBottomNav(role) {
   const nav = document.getElementById('bottomNav');
@@ -937,7 +1011,7 @@ function buildBottomNav(role) {
   });
 }
 
-function switchView(viewId) {
+function switchView(viewId, opts = {}) {
   state.activeView = viewId;
   document.querySelectorAll('.page-view').forEach((v) => v.classList.add('hidden'));
   const target = document.getElementById(viewId);
@@ -948,22 +1022,97 @@ function switchView(viewId) {
     btn.classList.toggle('active', btn.dataset.view === navHighlight);
   });
 
+  if (viewId === 'viewDashboard') {
+    startDashboardAutoRefresh();
+  } else {
+    stopDashboardAutoRefresh();
+  }
+
   window.scrollTo({ top: 0, behavior: 'instant' });
 
   if (viewId === 'viewAbsen') {
     updateAbsenGreetingDisplay();
     applyTodayScheduleToForm();
+    renderTodayProgress(false);
     loadActiveBreaksForAbsen();
   }
   if (viewId === 'viewKalenderSaya') loadCrewCalendar();
-  if (viewId === 'viewRiwayat') loadHistory();
-  if (viewId === 'viewDashboard') loadDashboard();
+  if (viewId === 'viewRiwayat' && !opts.skipLoad) loadHistory();
+  if (viewId === 'viewDashboard') loadDashboard(true);
   if (viewId === 'viewJadwal') loadJadwalView();
   if (viewId === 'viewInsight') loadInsights();
   if (viewId === 'viewKelola') loadMasterData();
 }
 
-/* ======================== FORM ABSENSI, WATERMARK FOTO & ISTIRAHAT ======================== */
+/* ======================== ABSEN PINTAR, JEJAK PROGRES & KAMERA LIVE ======================== */
+
+function setSelectedAbsenJenis(jenis, isManual = false) {
+  const clean = ['MASUK', 'ISTIRAHAT', 'PULANG'].includes(jenis) ? jenis : 'MASUK';
+  if (isManual) state.userManualJenisPick = true;
+
+  document.getElementById('absenJenis').value = clean;
+  document.querySelectorAll('#formAbsen .seg-btn').forEach((b) => {
+    b.classList.toggle('active', b.dataset.jenis === clean);
+  });
+  document.getElementById('breakRuleHint').classList.toggle('hidden', clean !== 'ISTIRAHAT');
+  updateAbsenGreetingDisplay();
+}
+
+function renderTodayProgress(autoSelectNext = false) {
+  const card = document.getElementById('todayProgressCard');
+  if (!card || !state.user || state.user.role === 'MONITORING' || !state.todayProgress) {
+    if (card) card.classList.add('hidden');
+    return;
+  }
+
+  const p = state.todayProgress;
+  card.classList.remove('hidden');
+
+  const stepMasuk = document.getElementById('progStepMasuk');
+  const stepIst = document.getElementById('progStepIstirahat');
+  const stepPulang = document.getElementById('progStepPulang');
+  const lines = card.querySelectorAll('.progress-line');
+  const nextHint = document.getElementById('progressNextHint');
+
+  const fmtShort = (rec) => (rec && rec.jam ? rec.jam.slice(0, 5) : 'Belum');
+
+  document.getElementById('progTimeMasuk').textContent = fmtShort(p.masuk);
+  document.getElementById('progTimeIstirahat').textContent = fmtShort(p.istirahat);
+  document.getElementById('progTimePulang').textContent = fmtShort(p.pulang);
+
+  stepMasuk.classList.toggle('is-done', Boolean(p.masuk));
+  stepIst.classList.toggle('is-done', Boolean(p.istirahat));
+  stepPulang.classList.toggle('is-done', Boolean(p.pulang));
+
+  stepMasuk.querySelector('.prog-dot').textContent = p.masuk ? '✓' : '1';
+  stepIst.querySelector('.prog-dot').textContent = p.istirahat ? '✓' : '2';
+  stepPulang.querySelector('.prog-dot').textContent = p.pulang ? '✓' : '3';
+
+  stepMasuk.classList.toggle('is-current', p.nextSuggestedJenis === 'MASUK');
+  stepIst.classList.toggle('is-current', p.nextSuggestedJenis === 'ISTIRAHAT');
+  stepPulang.classList.toggle('is-current', p.nextSuggestedJenis === 'PULANG');
+
+  if (lines[0]) lines[0].classList.toggle('is-done', Boolean(p.masuk));
+  if (lines[1]) lines[1].classList.toggle('is-done', Boolean(p.istirahat || p.pulang));
+
+  if (p.nextSuggestedJenis === 'DONE') {
+    nextHint.className = 'badge badge-masuk';
+    nextHint.textContent = 'Absen Hari Ini Lengkap';
+  } else if (p.nextSuggestedJenis === 'PULANG') {
+    nextHint.className = 'badge badge-pulang';
+    nextHint.textContent = 'Berikutnya: Pulang';
+  } else if (p.nextSuggestedJenis === 'ISTIRAHAT') {
+    nextHint.className = 'badge badge-istirahat';
+    nextHint.textContent = 'Berikutnya: Istirahat / Pulang';
+  } else {
+    nextHint.className = 'badge badge-warning';
+    nextHint.textContent = 'Berikutnya: Masuk';
+  }
+
+  if (autoSelectNext && !state.userManualJenisPick && p.nextSuggestedJenis && p.nextSuggestedJenis !== 'DONE') {
+    setSelectedAbsenJenis(p.nextSuggestedJenis, false);
+  }
+}
 
 function setupAbsenForm() {
   const isAdmin = state.user.role === 'ADMIN';
@@ -989,6 +1138,7 @@ function setupAbsenForm() {
   shiftSel.value = hour < 13 ? 'PAGI' : 'SIANG';
 
   applyTodayScheduleToForm();
+  renderTodayProgress(true);
   updateAbsenGreetingDisplay();
   updateGpsHint();
 }
@@ -1068,13 +1218,21 @@ function updateGpsHint() {
 async function loadActiveBreaksForAbsen() {
   if (!state.user || state.user.role === 'MONITORING') return;
   const toko = document.getElementById('absenToko').value || state.user.toko;
+  setBgSync(true);
   try {
     const res = await apiCall({ action: 'getActiveBreaks', toko });
     state.myBreak = res.myBreak || null;
     state.storeBreaks = res.breaks || [];
+    if (res.todayProgress) {
+      state.todayProgress = res.todayProgress;
+      renderTodayProgress(true);
+    }
     renderStoreBreaksCard(res.toko || toko);
     tickAllBreakCountdowns();
-  } catch {}
+  } catch {
+  } finally {
+    setBgSync(false);
+  }
 }
 
 function renderStoreBreaksCard(tokoName) {
@@ -1164,8 +1322,107 @@ function formatFullIndoDateTime(dtObj) {
   return `${hari}, ${tgl} ${bln} ${thn} • ${jam} WIB`;
 }
 
-function handlePhotoSelected(e) {
+/* --- KAMERA LIVE DALAM APLIKASI (ANTI-CURANG 100%) --- */
+
+async function openLiveCameraModal() {
+  if (!navigator.mediaDevices || !navigator.mediaDevices.getUserMedia) {
+    document.getElementById('inputFotoKamera').click();
+    return;
+  }
+
+  const jenis = document.getElementById('absenJenis').value || 'MASUK';
+  const shift = document.getElementById('absenShift').value || 'PAGI';
+  const nama = document.getElementById('absenNama').value || (state.user && state.user.nama) || '';
+  const toko = document.getElementById('absenToko').value || '';
+
+  document.getElementById('liveCamTitleOverlay').textContent = `MOMOYO • ${jenis} (${shift}) — ${nama} (${toko})`;
+  openModal('modalLiveCamera');
+  await startLiveCameraStream();
+}
+
+async function startLiveCameraStream() {
+  stopLiveCameraStreamOnly();
+  const video = document.getElementById('liveCamVideo');
+  const sub = document.getElementById('liveCamSubInfo');
+  sub.textContent = 'Menyiapkan kamera...';
+
+  try {
+    const stream = await navigator.mediaDevices.getUserMedia({
+      video: {
+        facingMode: { ideal: liveCam.facingMode },
+        width: { ideal: 1280 },
+        height: { ideal: 1280 }
+      },
+      audio: false
+    });
+    liveCam.stream = stream;
+    liveCam.active = true;
+    video.srcObject = stream;
+    video.classList.toggle('is-mirrored', liveCam.facingMode === 'user');
+    await video.play().catch(() => {});
+    sub.textContent = 'Pastikan wajah terlihat jelas, lalu ketuk Jepret Foto.';
+  } catch (err) {
+    stopLiveCamera();
+    showToast('Izin kamera browser tidak aktif, beralih ke kamera bawaan HP.');
+    document.getElementById('inputFotoKamera').click();
+  }
+}
+
+function stopLiveCameraStreamOnly() {
+  if (liveCam.stream) {
+    liveCam.stream.getTracks().forEach((t) => t.stop());
+    liveCam.stream = null;
+  }
+  const video = document.getElementById('liveCamVideo');
+  if (video) video.srcObject = null;
+  liveCam.active = false;
+}
+
+function stopLiveCamera() {
+  stopLiveCameraStreamOnly();
+  const modal = document.getElementById('modalLiveCamera');
+  if (modal) modal.classList.add('hidden');
+}
+
+async function captureFromLiveCamera() {
+  const video = document.getElementById('liveCamVideo');
+  if (!video || !video.videoWidth || !video.videoHeight) {
+    showToast('Kamera belum siap, tunggu sebentar.', 'error');
+    return;
+  }
+
+  let w = video.videoWidth;
+  let h = video.videoHeight;
+  const maxDim = 1200;
+  if (w > maxDim || h > maxDim) {
+    if (w > h) {
+      h = Math.round((h * maxDim) / w);
+      w = maxDim;
+    } else {
+      w = Math.round((w * maxDim) / h);
+      h = maxDim;
+    }
+  }
+
+  const canvas = document.createElement('canvas');
+  canvas.width = w;
+  canvas.height = h;
+  const ctx = canvas.getContext('2d');
+  if (liveCam.facingMode === 'user') {
+    ctx.translate(w, 0);
+    ctx.scale(-1, 1);
+  }
+  ctx.drawImage(video, 0, 0, w, h);
+  const rawBase64 = canvas.toDataURL('image/jpeg', 0.8);
+  const capturedNow = new Date(Date.now() + state.serverOffsetMs);
+
+  stopLiveCamera();
+  await applyCapturedPhotoPreview(rawBase64, capturedNow);
+}
+
+function handleNativeCameraSelected(e) {
   const file = e.target.files && e.target.files[0];
+  e.target.value = '';
   if (!file) return;
   if (!file.type.startsWith('image/')) {
     showToast('File harus berupa gambar/foto.', 'error');
@@ -1173,23 +1430,38 @@ function handlePhotoSelected(e) {
   }
 
   const capturedNow = new Date(Date.now() + state.serverOffsetMs);
-  setLoading(true, 'Mengompres foto...');
+  setLoading(true, 'Memproses foto kamera...');
   compressImage(file, 1200, 0.78)
-    .then(({ base64, sizeKB }) => {
-      state.photoRawBase64 = base64;
-      state.photoCapturedAt = capturedNow;
-      const capTimeStr = `${pad2(capturedNow.getHours())}:${pad2(capturedNow.getMinutes())}:${pad2(capturedNow.getSeconds())} WIB`;
-      document.getElementById('photoPreviewImg').src = base64;
-      document.getElementById('photoSizeInfo').textContent = `Siap dikirim (${sizeKB} KB) • Foto ${capTimeStr}`;
-      document.getElementById('photoPreviewBox').classList.remove('hidden');
-      document.getElementById('photoEmptyBox').classList.add('hidden');
-      document.getElementById('absenRetryBox').classList.add('hidden');
-    })
-    .catch(() => showToast('Gagal memproses foto. Coba pilih ulang foto.', 'error'))
-    .finally(() => {
-      setLoading(false);
-      e.target.value = '';
-    });
+    .then(({ base64 }) => applyCapturedPhotoPreview(base64, capturedNow))
+    .catch(() => showToast('Gagal memproses foto. Coba ambil ulang.', 'error'))
+    .finally(() => setLoading(false));
+}
+
+async function applyCapturedPhotoPreview(rawBase64, capturedNow) {
+  state.photoRawBase64 = rawBase64;
+  state.photoCapturedAt = capturedNow;
+
+  const jenis = document.getElementById('absenJenis').value || 'MASUK';
+  const shift = document.getElementById('absenShift').value || 'PAGI';
+  const toko = document.getElementById('absenToko').value || '';
+  const nama = document.getElementById('absenNama').value.trim() || (state.user && state.user.nama) || '';
+
+  const previewStamped = await bakeTimestampWatermark(rawBase64, {
+    nama,
+    toko,
+    jenis,
+    shift,
+    capturedAt: capturedNow,
+    submittedAt: null
+  });
+
+  const sizeKB = Math.round((previewStamped.length * 3) / 4 / 1024);
+  const capTimeStr = `${pad2(capturedNow.getHours())}:${pad2(capturedNow.getMinutes())}:${pad2(capturedNow.getSeconds())} WIB`;
+  document.getElementById('photoPreviewImg').src = previewStamped;
+  document.getElementById('photoSizeInfo').textContent = `Siap kirim (${sizeKB} KB) • Foto ${capTimeStr}`;
+  document.getElementById('photoPreviewBox').classList.remove('hidden');
+  document.getElementById('photoEmptyBox').classList.add('hidden');
+  document.getElementById('absenRetryBox').classList.add('hidden');
 }
 
 function compressImage(file, maxDim, quality) {
@@ -1215,8 +1487,7 @@ function compressImage(file, maxDim, quality) {
         canvas.height = height;
         canvas.getContext('2d').drawImage(img, 0, 0, width, height);
         const base64 = canvas.toDataURL('image/jpeg', quality);
-        const sizeKB = Math.round((base64.length * 3) / 4 / 1024);
-        resolve({ base64, sizeKB });
+        resolve({ base64 });
       };
       img.src = ev.target.result;
     };
@@ -1224,7 +1495,6 @@ function compressImage(file, maxDim, quality) {
   });
 }
 
-// Menanam watermark permanen (tanggal, bulan, tahun & jam aktual foto + submit) ke gambar
 function bakeTimestampWatermark(rawBase64, meta) {
   return new Promise((resolve, reject) => {
     const img = new Image();
@@ -1246,10 +1516,11 @@ function bakeTimestampWatermark(rawBase64, meta) {
       const fontSm = Math.round(17 * scale);
       const lineGap = Math.round(8 * scale);
 
-      const boxH = padY * 2 + fontLg + fontMd + fontSm * 2 + lineGap * 3 + Math.round(10 * scale);
+      const hasSubmit = Boolean(meta.submittedAt);
+      const lineCountSm = hasSubmit ? 2 : 1;
+      const boxH = padY * 2 + fontLg + fontMd + fontSm * lineCountSm + lineGap * (lineCountSm + 1) + Math.round(10 * scale);
       const boxY = Math.max(0, h - boxH);
 
-      // Latar gradasi gelap lembut di sisi bawah agar teks tajam di segala pencahayaan
       const grad = ctx.createLinearGradient(0, boxY - Math.round(24 * scale), 0, h);
       grad.addColorStop(0, 'rgba(15, 20, 32, 0)');
       grad.addColorStop(0.2, 'rgba(15, 20, 32, 0.72)');
@@ -1257,7 +1528,6 @@ function bakeTimestampWatermark(rawBase64, meta) {
       ctx.fillStyle = grad;
       ctx.fillRect(0, boxY - Math.round(24 * scale), w, boxH + Math.round(24 * scale));
 
-      // Garis aksen merah MOMOYO di sisi kiri kotak teks
       ctx.fillStyle = '#E52B3B';
       ctx.fillRect(padX, boxY + padY, Math.round(5 * scale), boxH - padY * 2);
 
@@ -1279,10 +1549,12 @@ function bakeTimestampWatermark(rawBase64, meta) {
       ctx.font = `600 ${fontSm}px "Plus Jakarta Sans", -apple-system, sans-serif`;
       ctx.fillText(`Waktu Foto   : ${formatFullIndoDateTime(meta.capturedAt)}`, textX, curY);
 
-      curY += fontSm + lineGap;
-      ctx.fillStyle = '#FDE68A';
-      ctx.font = `700 ${fontSm}px "Plus Jakarta Sans", -apple-system, sans-serif`;
-      ctx.fillText(`Waktu Submit : ${formatFullIndoDateTime(meta.submittedAt)}`, textX, curY);
+      if (hasSubmit) {
+        curY += fontSm + lineGap;
+        ctx.fillStyle = '#FDE68A';
+        ctx.font = `700 ${fontSm}px "Plus Jakarta Sans", -apple-system, sans-serif`;
+        ctx.fillText(`Waktu Submit : ${formatFullIndoDateTime(meta.submittedAt)}`, textX, curY);
+      }
 
       resolve(canvas.toDataURL('image/jpeg', 0.8));
     };
@@ -1320,7 +1592,7 @@ async function submitAttendance(e) {
   const nama = document.getElementById('absenNama').value.trim();
 
   if (!nama || !toko) return showToast('Nama dan toko wajib terisi.', 'error');
-  if (!state.photoRawBase64) return showToast('Wajib unggah foto selfie terlebih dahulu.', 'error');
+  if (!state.photoRawBase64) return showToast('Wajib ambil foto selfie dari kamera langsung terlebih dahulu.', 'error');
 
   document.getElementById('absenRetryBox').classList.add('hidden');
   let coords = {};
@@ -1374,6 +1646,11 @@ async function submitAttendance(e) {
     openModal('modalSuccess');
     clearPhoto();
 
+    state.userManualJenisPick = false;
+    if (res.todayProgress) {
+      state.todayProgress = res.todayProgress;
+      renderTodayProgress(true);
+    }
     if (d.jenis === 'ISTIRAHAT') {
       loadActiveBreaksForAbsen();
     }
@@ -1552,8 +1829,11 @@ async function loadCrewCalendar() {
   const endDate = `${y}-${pad2(m)}-${pad2(daysInMonth)}`;
 
   document.getElementById('calMonthLabel').textContent = `${BULAN_ID[m - 1]} ${y}`;
-  document.getElementById('crewCalendarGrid').innerHTML = '<div class="empty-state" style="grid-column:1/-1">Memuat kalender...</div>';
+  if (!Object.keys(state.calRecordsByDate).length) {
+    document.getElementById('crewCalendarGrid').innerHTML = '<div class="empty-state" style="grid-column:1/-1">Memuat kalender...</div>';
+  }
 
+  setBgSync(true);
   try {
     const res = await apiCall({ action: 'getHistory', filters: { startDate, endDate } });
     const built = buildCalendarMaps(res.records, res.schedules);
@@ -1579,6 +1859,8 @@ async function loadCrewCalendar() {
     selectCrewCalendarDay(state.calSelectedDate);
   } catch (err) {
     document.getElementById('crewCalendarGrid').innerHTML = `<div class="empty-state" style="grid-column:1/-1">${esc(err.message)}</div>`;
+  } finally {
+    setBgSync(false);
   }
 }
 
@@ -1626,6 +1908,7 @@ async function loadAdminCrewCalendar() {
   document.getElementById('adminCrewCalGrid').innerHTML = '<div class="empty-state" style="grid-column:1/-1">Memuat kalender karyawan...</div>';
 
   const actionName = state.user.role === 'ADMIN' ? 'getHistory' : 'getMonitoringHistory';
+  setBgSync(true);
   try {
     const res = await apiCall({
       action: actionName,
@@ -1654,6 +1937,8 @@ async function loadAdminCrewCalendar() {
     selectAdminCrewCalendarDay(state.adminCalSelectedDate);
   } catch (err) {
     document.getElementById('adminCrewCalGrid').innerHTML = `<div class="empty-state" style="grid-column:1/-1">${esc(err.message)}</div>`;
+  } finally {
+    setBgSync(false);
   }
 }
 
@@ -1693,6 +1978,32 @@ function populateFilterStores(storeNames) {
   }
 }
 
+function openTodayHistoryFromDashboard() {
+  const now = new Date(Date.now() + state.serverOffsetMs);
+  const todayKey = (state.dashData && state.dashData.todayDateKey) ||
+    `${now.getFullYear()}-${pad2(now.getMonth() + 1)}-${pad2(now.getDate())}`;
+
+  document.getElementById('filterSearch').value = '';
+  document.getElementById('filterJenis').value = 'SEMUA';
+  document.getElementById('filterShift').value = 'SEMUA';
+  document.getElementById('filterStart').value = todayKey;
+  document.getElementById('filterEnd').value = todayKey;
+
+  const filterTokoSel = document.getElementById('filterToko');
+  if (filterTokoSel) {
+    const targetToko = state.dashOutletFilter || 'SEMUA';
+    if ([...filterTokoSel.options].some((o) => o.value === targetToko)) {
+      filterTokoSel.value = targetToko;
+    } else {
+      filterTokoSel.value = 'SEMUA';
+    }
+  }
+
+  state.historyMode = 'list';
+  switchView('viewRiwayat', { skipLoad: true });
+  loadHistory();
+}
+
 async function loadHistory() {
   const isAdmin = state.user.role === 'ADMIN';
   document.getElementById('riwayatModeSub').textContent = isAdmin
@@ -1700,9 +2011,9 @@ async function loadHistory() {
     : 'Management Monitoring lintas cabang (Hanya Lihat)';
 
   const container = document.getElementById('historyList');
-  const gallery = document.getElementById('historyGallery');
-  container.innerHTML = '<div class="empty-state">Memuat riwayat absensi...</div>';
-  gallery.innerHTML = '';
+  if (!state.historyRecords.length) {
+    container.innerHTML = '<div class="empty-state">Memuat riwayat absensi...</div>';
+  }
 
   const filters = {
     search: document.getElementById('filterSearch').value.trim(),
@@ -1714,6 +2025,7 @@ async function loadHistory() {
   };
 
   const actionName = isAdmin ? 'getHistory' : 'getMonitoringHistory';
+  setBgSync(true);
   try {
     const res = await apiCall({ action: actionName, filters });
     if (res.stores && res.stores.length) populateFilterStores(res.stores);
@@ -1721,6 +2033,8 @@ async function loadHistory() {
     renderHistoryCurrentMode();
   } catch (err) {
     container.innerHTML = `<div class="empty-state">${esc(err.message)}</div>`;
+  } finally {
+    setBgSync(false);
   }
 }
 
@@ -1764,20 +2078,16 @@ function renderHistoryGallery(container, records) {
   `).join('');
 }
 
-function renderRecordList(container, records, allowAdminActions, isTodayEmpty = false) {
+function renderRecordList(container, records, allowAdminActions) {
   if (!records.length) {
-    if (isTodayEmpty) {
-      container.innerHTML = `
-        <div class="mascot-empty-box">
-          <div class="mascot-empty-circle"><img data-mascot-img alt="" /></div>
-          <strong>Belum ada data absensi</strong>
-          <span>Data akan muncul setelah karyawan melakukan absen hari ini.</span>
-        </div>
-      `;
-      applyMascotAssets(container);
-    } else {
-      container.innerHTML = '<div class="empty-state">Belum ada data absensi sesuai filter.</div>';
-    }
+    container.innerHTML = `
+      <div class="mascot-empty-box">
+        <div class="mascot-empty-circle"><img data-mascot-img alt="" /></div>
+        <strong>Belum ada data absensi sesuai filter</strong>
+        <span>Coba klik Reset atau ubah rentang tanggal.</span>
+      </div>
+    `;
+    applyMascotAssets(container);
     return;
   }
 
@@ -1812,104 +2122,306 @@ function renderRecordList(container, records, allowAdminActions, isTodayEmpty = 
   }).join('');
 }
 
-/* ======================== DASHBOARD LIVE & GRAFIK 3D ======================== */
+/* ======================== DASHBOARD LIVE & MANAGEMENT MONITORING ======================== */
+
+function startDashboardAutoRefresh() {
+  stopDashboardAutoRefresh();
+  state.dashAutoRefreshTimer = setInterval(() => {
+    if (state.activeView !== 'viewDashboard' || document.hidden) return;
+    if (document.querySelector('.modal-backdrop:not(.hidden)')) return;
+    loadDashboard(true);
+  }, 60000);
+}
+
+function stopDashboardAutoRefresh() {
+  if (state.dashAutoRefreshTimer) {
+    clearInterval(state.dashAutoRefreshTimer);
+    state.dashAutoRefreshTimer = null;
+  }
+}
 
 async function loadDashboard(silent = false) {
   const isAdmin = state.user.role === 'ADMIN';
   document.getElementById('dashHeadingTitle').textContent = isAdmin ? 'Dashboard Hari Ini' : 'Management Monitoring — Live';
   document.getElementById('dashTopSwitcher').classList.toggle('hidden', state.user.role === 'MONITORING');
 
-  if (!silent) setLoading(true, 'Memuat data live...');
+  // Instant Cache: tampilkan data terakhir segera sambil menyegarkan diam-diam di latar belakang
+  if (state.dashData) {
+    renderDashboardFromData();
+  }
+
+  if (!silent && !state.dashData) {
+    setLoading(true, 'Memuat data live...');
+  } else {
+    setBgSync(true);
+  }
+
   try {
     const res = await apiCall({ action: isAdmin ? 'getDashboard' : 'getMonitoringDashboard' });
     if (res.stores && res.stores.length) populateFilterStores(res.stores);
-
-    document.getElementById('dashDateLabel').textContent = res.serverDate;
-    document.getElementById('kpiMasuk').textContent = res.summary.masuk;
-    document.getElementById('kpiIstirahat').textContent = res.summary.sedangIstirahat || 0;
-    document.getElementById('kpiPulang').textContent = res.summary.pulang;
-    document.getElementById('kpiBelumPulang').textContent = res.summary.belumPulangHariIni;
-    document.getElementById('kpiTelat').textContent = res.summary.terlambat;
-
-    const brCard = document.getElementById('dashActiveBreaksCard');
-    const brList = document.getElementById('dashActiveBreaksList');
-    state.dashActiveBreaks = res.activeBreaks || [];
-    if (state.dashActiveBreaks.length) {
-      brCard.classList.remove('hidden');
-      brList.innerHTML = state.dashActiveBreaks.map((b) => {
-        const meta = encodePhotoMeta({
-          nama: b.nama,
-          toko: b.toko,
-          jenis: 'ISTIRAHAT',
-          shift: b.shift,
-          hari: '',
-          tanggalDisplay: res.serverDate,
-          jam: b.startJam,
-          status: `s/d ${b.endJam} WIB`
-        });
-        return `
-          <div class="mini-item">
-            <div>
-              <strong>${esc(b.nama)}</strong> (${esc(b.toko)})
-              <div class="record-sub">Shift ${esc(b.shift)} • Mulai ${esc(b.startJam)} s/d ${esc(b.endJam)} WIB</div>
-            </div>
-            <div style="display:flex;align-items:center;gap:6px">
-              ${b.foto ? `<button type="button" class="btn-ghost-sm" onclick="previewPhoto('${esc(b.foto)}','${meta}')">Foto</button>` : ''}
-              <span class="badge ${b.isOngoing ? 'badge-warning' : 'badge-masuk'} live-break-badge" data-end-ms="${b.endMs}">
-                ${b.isOngoing ? `Sisa ${formatRemainingMs(b.endMs - (Date.now() + state.serverOffsetMs))}` : 'Selesai'}
-              </span>
-            </div>
-          </div>
-        `;
-      }).join('');
-    } else {
-      brCard.classList.add('hidden');
-    }
-
-    const bpCard = document.getElementById('belumPulangCard');
-    const bpList = document.getElementById('belumPulangList');
-    if (res.belumPulang && res.belumPulang.length) {
-      bpCard.classList.remove('hidden');
-      bpList.innerHTML = res.belumPulang.map((b) => `
-        <div class="mini-item">
-          <div>
-            <strong>${esc(b.nama)}</strong> (${esc(b.toko)})
-            <div class="record-sub">${esc(b.tanggal)} • Shift ${esc(b.shift)} • Masuk ${esc(b.jamMasuk)}</div>
-          </div>
-          <span class="badge ${b.hariIni ? 'badge-warning' : 'badge-danger'}">${b.hariIni ? 'Hari Ini' : 'Terlewat'}</span>
-        </div>
-      `).join('');
-    } else {
-      bpCard.classList.add('hidden');
-    }
-
-    document.getElementById('dashStoreTable').innerHTML = (res.perStore || []).map((s) => `
-      <tr class="clickable-row" onclick="openStoreDetail(decodeURIComponent('${encodeURIComponent(s.toko)}'))">
-        <td>
-          <div class="row-entity-cell">
-            <span class="row-init-badge">${esc(getInitials(s.toko))}</span>
-            <span class="row-entity-name">${esc(s.toko)}</span>
-          </div>
-        </td>
-        <td class="text-center"><strong>${s.masuk}</strong></td>
-        <td class="text-center">${s.istirahat || 0}</td>
-        <td class="text-center">${s.pulang}</td>
-        <td class="text-center">${s.belumPulang > 0 ? `<span class="num-pill num-pill-warn">${s.belumPulang}</span>` : '0'}</td>
-        <td class="text-center">${s.terlambat > 0 ? `<span class="num-pill num-pill-danger">${s.terlambat}</span>` : '0'}</td>
-      </tr>
-    `).join('');
-
-    renderCharts(res.chartPerStore || [], res.chart7Days || []);
-    renderRecordList(document.getElementById('dashTodayList'), res.todayRecords || [], isAdmin, true);
-    tickAllBreakCountdowns();
+    state.dashData = res;
+    state.dashLastUpdatedAt = new Date(Date.now() + state.serverOffsetMs);
+    renderDashboardFromData();
   } catch (err) {
     showToast(err.message, 'error');
   } finally {
-    if (!silent) setLoading(false);
+    if (!silent && !state.dashData) {
+      setLoading(false);
+    } else {
+      setBgSync(false);
+    }
+    setLoading(false);
   }
 }
 
-// Plugin 3D Glossy untuk Grafik Batang (silinder timbul + cahaya atas-kiri + drop shadow)
+function renderDashboardOutletPills(stores) {
+  const bar = document.getElementById('dashOutletFilterBar');
+  if (!bar) return;
+  const list = ['SEMUA', ...(stores || [])];
+  if (!list.includes(state.dashOutletFilter)) state.dashOutletFilter = 'SEMUA';
+
+  bar.innerHTML = list.map((name) => {
+    const label = name === 'SEMUA' ? 'Semua Outlet' : name;
+    const activeCls = state.dashOutletFilter === name ? 'active' : '';
+    return `<button type="button" class="outlet-pill ${activeCls}" data-outlet="${esc(name)}">${esc(label)}</button>`;
+  }).join('');
+
+  bar.querySelectorAll('.outlet-pill').forEach((btn) => {
+    btn.addEventListener('click', () => {
+      state.dashOutletFilter = btn.dataset.outlet || 'SEMUA';
+      renderDashboardFromData();
+    });
+  });
+}
+
+function renderDashboardFromData() {
+  const res = state.dashData;
+  if (!res) return;
+
+  const filterOutlet = state.dashOutletFilter || 'SEMUA';
+  const matchOutlet = (toko) => filterOutlet === 'SEMUA' || String(toko || '').toUpperCase() === filterOutlet.toUpperCase();
+
+  renderDashboardOutletPills(res.stores || []);
+
+  document.getElementById('dashDateLabel').textContent = res.serverDate || '-';
+  const updEl = document.getElementById('dashLiveUpdated');
+  if (updEl && state.dashLastUpdatedAt) {
+    const hh = pad2(state.dashLastUpdatedAt.getHours());
+    const mm = pad2(state.dashLastUpdatedAt.getMinutes());
+    updEl.innerHTML = `<i class="live-pulse-dot"></i> Live • ${hh}:${mm} WIB`;
+  }
+
+  const perStoreAll = res.perStore || [];
+  const perStoreFiltered = filterOutlet === 'SEMUA'
+    ? perStoreAll
+    : perStoreAll.filter((s) => matchOutlet(s.toko));
+
+  const activeBreaks = (res.activeBreaks || []).filter((b) => matchOutlet(b.toko));
+  const belumPulang = (res.belumPulang || []).filter((b) => matchOutlet(b.toko));
+  const belumHadir = (res.belumHadir || []).filter((b) => matchOutlet(b.toko));
+  const izinSakit = (res.izinSakitHariIni || []).filter((b) => matchOutlet(b.toko));
+  const terlambat = (res.terlambatHariIni || []).filter((b) => matchOutlet(b.toko));
+  const todayRecords = (res.todayRecords || []).filter((r) => matchOutlet(r.toko));
+
+  // Hitung 6 KPI sesuai outlet terpilih
+  const kpiMasuk = perStoreFiltered.reduce((sum, s) => sum + (s.masuk || 0), 0);
+  const kpiPulang = perStoreFiltered.reduce((sum, s) => sum + (s.pulang || 0), 0);
+  const kpiTelat = perStoreFiltered.reduce((sum, s) => sum + (s.terlambat || 0), 0);
+  const kpiBelumPulang = belumPulang.filter((b) => b.hariIni).length;
+  const kpiIstirahat = activeBreaks.filter((b) => b.isOngoing).length;
+  const kpiBelumHadir = belumHadir.length;
+
+  document.getElementById('kpiMasuk').textContent = kpiMasuk;
+  document.getElementById('kpiIstirahat').textContent = kpiIstirahat;
+  document.getElementById('kpiPulang').textContent = kpiPulang;
+  document.getElementById('kpiBelumHadir').textContent = kpiBelumHadir;
+  document.getElementById('kpiBelumPulang').textContent = kpiBelumPulang;
+  document.getElementById('kpiTelat').textContent = kpiTelat;
+
+  const canWa = state.user && (state.user.role === 'ADMIN' || state.user.role === 'MONITORING');
+
+  // 1. Accordion Belum Hadir & Izin/Sakit
+  const bhCard = document.getElementById('accBelumHadirCard');
+  const bhTotal = belumHadir.length + izinSakit.length;
+  if (bhTotal > 0) {
+    bhCard.classList.remove('hidden');
+    const lewatCnt = belumHadir.filter((b) => b.sudahLewatJam).length;
+    document.getElementById('accBelumHadirCount').textContent = bhTotal;
+    document.getElementById('accBelumHadirSub').textContent =
+      `${belumHadir.length} belum absen${lewatCnt ? ` (${lewatCnt} lewat jam mulai)` : ''} • ${izinSakit.length} izin/sakit/off`;
+
+    const bhItemsHtml = belumHadir.map((b) => {
+      const waMsg = `Halo ${b.nama}, jadwal shift ${b.shift} hari ini di MOMOYO ${b.toko} dimulai pukul ${b.shiftMulai} WIB. Mohon konfirmasi kehadiran & segera absen masuk ya. Terima kasih!`;
+      const waBtn = canWa ? buildWaButtonHtml(b.noTelp, waMsg) : '';
+      return `
+        <div class="mini-item">
+          <div>
+            <strong>${esc(b.nama)}</strong> <span class="record-sub">(${esc(b.toko)})</span>
+            <div class="record-sub">Jadwal Shift ${esc(b.shift)} • Mulai ${esc(b.shiftMulai)} WIB</div>
+          </div>
+          <div class="mini-item-actions">
+            ${waBtn}
+            <span class="badge ${b.sudahLewatJam ? 'badge-danger' : 'badge-berry'}">
+              ${b.sudahLewatJam ? `Lewat ${b.lewatMenit}m` : 'Belum Absen'}
+            </span>
+          </div>
+        </div>
+      `;
+    }).join('');
+
+    const izinItemsHtml = izinSakit.map((it) => {
+      const waMsg = `Halo ${it.nama} (MOMOYO ${it.toko}), terkait status jadwal ${it.status} hari ini. Semoga lancar ya!`;
+      const waBtn = canWa ? buildWaButtonHtml(it.noTelp, waMsg) : '';
+      return `
+        <div class="mini-item">
+          <div>
+            <strong>${esc(it.nama)}</strong> <span class="record-sub">(${esc(it.toko)})</span>
+            <div class="record-sub">${esc(it.catatan || 'Tercatat di jadwal shift hari ini')}</div>
+          </div>
+          <div class="mini-item-actions">
+            ${waBtn}
+            <span class="badge badge-neutral">${esc(it.status)}</span>
+          </div>
+        </div>
+      `;
+    }).join('');
+
+    document.getElementById('dashBelumHadirList').innerHTML = bhItemsHtml + izinItemsHtml;
+  } else {
+    bhCard.classList.add('hidden');
+  }
+
+  // 2. Accordion Sedang / Baru Selesai Istirahat
+  const brCard = document.getElementById('dashActiveBreaksCard');
+  if (activeBreaks.length) {
+    brCard.classList.remove('hidden');
+    document.getElementById('accActiveBreaksCount').textContent = activeBreaks.length;
+    const ongoingCnt = activeBreaks.filter((b) => b.isOngoing).length;
+    document.getElementById('accActiveBreaksSub').textContent = `${ongoingCnt} sedang istirahat • ${activeBreaks.length - ongoingCnt} baru selesai`;
+
+    document.getElementById('dashActiveBreaksList').innerHTML = activeBreaks.map((b) => {
+      const meta = encodePhotoMeta({
+        nama: b.nama, toko: b.toko, jenis: 'ISTIRAHAT', shift: b.shift,
+        hari: '', tanggalDisplay: res.serverDate, jam: b.startJam, status: `s/d ${b.endJam} WIB`
+      });
+      const waMsg = `Halo ${b.nama}, mengingatkan waktu istirahat shift ${b.shift} di MOMOYO ${b.toko} berakhir pukul ${b.endJam} WIB. Mohon bersiap kembali bertugas ya. Terima kasih!`;
+      const waBtn = canWa ? buildWaButtonHtml(b.noTelp, waMsg) : '';
+      return `
+        <div class="mini-item">
+          <div>
+            <strong>${esc(b.nama)}</strong> <span class="record-sub">(${esc(b.toko)})</span>
+            <div class="record-sub">Shift ${esc(b.shift)} • ${esc(b.startJam)} s/d ${esc(b.endJam)} WIB</div>
+          </div>
+          <div class="mini-item-actions">
+            ${b.foto ? `<button type="button" class="btn-ghost-sm" onclick="previewPhoto('${esc(b.foto)}','${meta}')">Foto</button>` : ''}
+            ${waBtn}
+            <span class="badge ${b.isOngoing ? 'badge-warning' : 'badge-masuk'} live-break-badge" data-end-ms="${b.endMs}">
+              ${b.isOngoing ? `Sisa ${formatRemainingMs(b.endMs - (Date.now() + state.serverOffsetMs))}` : 'Selesai'}
+            </span>
+          </div>
+        </div>
+      `;
+    }).join('');
+  } else {
+    brCard.classList.add('hidden');
+  }
+
+  // 3. Accordion Belum Absen Pulang
+  const bpCard = document.getElementById('belumPulangCard');
+  if (belumPulang.length) {
+    bpCard.classList.remove('hidden');
+    document.getElementById('accBelumPulangCount').textContent = belumPulang.length;
+    const pastCnt = belumPulang.filter((b) => !b.hariIni).length;
+    document.getElementById('accBelumPulangSub').textContent =
+      `${kpiBelumPulang} hari ini${pastCnt ? ` • ${pastCnt} terlewat dari hari sebelumnya` : ''}`;
+
+    document.getElementById('belumPulangList').innerHTML = belumPulang.map((b) => {
+      const waMsg = `Halo ${b.nama}, tercatat belum melakukan absen PULANG untuk shift ${b.shift} tanggal ${b.tanggal} di MOMOYO ${b.toko}. Mohon segera lengkapi/konfirmasi ke Admin ya. Terima kasih!`;
+      const waBtn = canWa ? buildWaButtonHtml(b.noTelp, waMsg) : '';
+      return `
+        <div class="mini-item">
+          <div>
+            <strong>${esc(b.nama)}</strong> <span class="record-sub">(${esc(b.toko)})</span>
+            <div class="record-sub">${esc(b.tanggal)} • Shift ${esc(b.shift)} • Masuk ${esc(b.jamMasuk)}</div>
+          </div>
+          <div class="mini-item-actions">
+            ${waBtn}
+            <span class="badge ${b.hariIni ? 'badge-warning' : 'badge-danger'}">${b.hariIni ? 'Hari Ini' : 'Terlewat'}</span>
+          </div>
+        </div>
+      `;
+    }).join('');
+  } else {
+    bpCard.classList.add('hidden');
+  }
+
+  // 4. Accordion Terlambat Hari Ini
+  const tlCard = document.getElementById('accTerlambatCard');
+  if (terlambat.length) {
+    tlCard.classList.remove('hidden');
+    document.getElementById('accTerlambatCount').textContent = terlambat.length;
+    document.getElementById('accTerlambatSub').textContent = `${terlambat.length} karyawan terlambat masuk hari ini`;
+
+    document.getElementById('dashTerlambatList').innerHTML = terlambat.map((t) => {
+      const meta = encodePhotoMeta({
+        nama: t.nama, toko: t.toko, jenis: 'MASUK', shift: t.shift,
+        hari: '', tanggalDisplay: res.serverDate, jam: t.jam, status: t.status
+      });
+      const waMsg = `Halo ${t.nama}, tercatat absen masuk hari ini di MOMOYO ${t.toko} pukul ${t.jam} WIB (${t.status}). Mohon tetap jaga ketepatan waktu di shift berikutnya ya. Terima kasih!`;
+      const waBtn = canWa ? buildWaButtonHtml(t.noTelp, waMsg) : '';
+      return `
+        <div class="mini-item">
+          <div>
+            <strong>${esc(t.nama)}</strong> <span class="record-sub">(${esc(t.toko)})</span>
+            <div class="record-sub">Shift ${esc(t.shift)} • Masuk ${esc(t.jam)} WIB</div>
+          </div>
+          <div class="mini-item-actions">
+            ${t.foto ? `<button type="button" class="btn-ghost-sm" onclick="previewPhoto('${esc(t.foto)}','${meta}')">Foto</button>` : ''}
+            ${waBtn}
+            <span class="badge badge-danger">${esc(t.status)}</span>
+          </div>
+        </div>
+      `;
+    }).join('');
+  } else {
+    tlCard.classList.add('hidden');
+  }
+
+  // Tabel Ringkasan per Cabang Toko (7 Kolom)
+  document.getElementById('dashStoreTable').innerHTML = perStoreFiltered.map((s) => `
+    <tr class="clickable-row" onclick="openStoreDetail(decodeURIComponent('${encodeURIComponent(s.toko)}'))">
+      <td>
+        <div class="row-entity-cell">
+          <span class="row-init-badge">${esc(getInitials(s.toko))}</span>
+          <span class="row-entity-name">${esc(s.toko)}</span>
+        </div>
+      </td>
+      <td class="text-center"><strong>${s.masuk}</strong></td>
+      <td class="text-center">${s.istirahat || 0}</td>
+      <td class="text-center">${s.pulang}</td>
+      <td class="text-center">${(s.belumHadir || 0) > 0 ? `<span class="num-pill num-pill-berry">${s.belumHadir}</span>` : '0'}</td>
+      <td class="text-center">${s.belumPulang > 0 ? `<span class="num-pill num-pill-warn">${s.belumPulang}</span>` : '0'}</td>
+      <td class="text-center">${s.terlambat > 0 ? `<span class="num-pill num-pill-danger">${s.terlambat}</span>` : '0'}</td>
+    </tr>
+  `).join('');
+
+  // 1 Kartu Tombol Ringkas Detail Absensi Hari Ini
+  const recMasuk = todayRecords.filter((r) => r.jenis === 'MASUK').length;
+  const recIst = todayRecords.filter((r) => r.jenis === 'ISTIRAHAT').length;
+  const recPulang = todayRecords.filter((r) => r.jenis === 'PULANG').length;
+  const scopeTxt = filterOutlet === 'SEMUA' ? 'Semua outlet' : filterOutlet;
+  document.getElementById('dashTodayCountBadge').textContent = todayRecords.length;
+  document.getElementById('dashTodaySummaryText').textContent = todayRecords.length
+    ? `${scopeTxt}: ${recMasuk} Masuk • ${recIst} Istirahat • ${recPulang} Pulang`
+    : `${scopeTxt}: Belum ada aktivitas absensi hari ini`;
+
+  const chartStores = filterOutlet === 'SEMUA'
+    ? (res.chartPerStore || [])
+    : (res.chartPerStore || []).filter((c) => matchOutlet(c.label));
+  renderCharts(chartStores, res.chart7Days || []);
+  tickAllBreakCountdowns();
+}
+
 const bar3DGlossPlugin = {
   id: 'bar3DGloss',
   beforeDatasetsDraw(chart) {
@@ -1950,7 +2462,6 @@ const bar3DGlossPlugin = {
   }
 };
 
-// Plugin 3D Soft-Glow untuk Grafik Garis Tren 7 Hari
 const line3DGlowPlugin = {
   id: 'line3DGlow',
   beforeDatasetDraw(chart, args) {
@@ -2129,6 +2640,9 @@ async function loadStoreDetailData() {
   listEl.innerHTML = '<div class="empty-state">Memuat detail karyawan toko...</div>';
 
   const actionName = state.user.role === 'ADMIN' ? 'getStoreDetail' : 'getMonitoringStoreDetail';
+  const canWa = state.user && (state.user.role === 'ADMIN' || state.user.role === 'MONITORING');
+
+  setBgSync(true);
   try {
     const res = await apiCall({
       action: actionName,
@@ -2150,7 +2664,11 @@ async function loadStoreDetailData() {
         : esc(initials);
       const metaParts = [c.posisi || 'Karyawan'];
       if (c.area && c.area !== '-') metaParts.push(c.area);
-      if (c.noTelp && c.noTelp !== '-') metaParts.push(c.noTelp);
+      if (c.id) metaParts.push(`ID: ${c.id}`);
+
+      const waBtn = canWa
+        ? buildWaButtonHtml(c.noTelp, `Halo ${c.nama} (MOMOYO ${c.toko}), `)
+        : '';
 
       const encCrew = encodeURIComponent(JSON.stringify({
         nama: c.nama,
@@ -2162,11 +2680,14 @@ async function loadStoreDetailData() {
       return `
         <div class="crew-stat-card">
           <div class="crew-stat-header">
-            <div class="crew-mini-avatar">${avatarHtml}</div>
-            <div>
-              <div class="record-title">${esc(c.nama)}</div>
-              <div class="record-sub">${esc(metaParts.join(' • '))}</div>
+            <div class="crew-stat-header-left">
+              <div class="crew-mini-avatar">${avatarHtml}</div>
+              <div>
+                <div class="record-title">${esc(c.nama)}</div>
+                <div class="record-sub">${esc(metaParts.join(' • '))}</div>
+              </div>
             </div>
+            ${waBtn}
           </div>
           <div class="crew-stat-grid">
             <div class="crew-stat-pill">
@@ -2198,15 +2719,17 @@ async function loadStoreDetailData() {
     }).join('');
   } catch (err) {
     listEl.innerHTML = `<div class="empty-state">${esc(err.message)}</div>`;
+  } finally {
+    setBgSync(false);
   }
 }
 
-/* ======================== JADWAL SHIFT PER TOKO ======================== */
+/* ======================== JADWAL SHIFT PER TOKO + SALIN MINGGU LALU ======================== */
 
-async function loadJadwalView() {
+async function loadJadwalView(forceRefresh = false) {
   const isAdmin = state.user.role === 'ADMIN';
   document.getElementById('jadwalModeSubtitle').textContent = isAdmin
-    ? 'Klik kotak tanggal untuk mengatur/mengubah jadwal, lalu Simpan.'
+    ? 'Klik kotak tanggal untuk mengatur jadwal, atau gunakan Salin Minggu Lalu.'
     : 'Jadwal resmi per outlet dari Admin Only (Hanya Lihat).';
 
   const tokoSel = document.getElementById('jadwalTokoSelect');
@@ -2214,9 +2737,22 @@ async function loadJadwalView() {
   const year = Number(document.getElementById('jadwalYearSelect').value) || nowInit.getFullYear();
   let toko = tokoSel.value || state.jadwalStore || (state.user.role === 'CREW' ? state.user.toko : '');
 
+  const cacheKey = `${toko}|${year}|${month}`;
+  const cached = !forceRefresh && toko ? state.cache.jadwal[cacheKey] : null;
   const wrap = document.getElementById('jadwalMatrixWrap');
-  wrap.innerHTML = '<div class="empty-state">Memuat jadwal toko...</div>';
 
+  if (cached) {
+    state.jadwalStore = toko;
+    state.jadwalCrews = cached.crews;
+    state.jadwalMap = Object.assign({}, cached.map);
+    state.jadwalDirty = {};
+    updateJadwalDirtyInfo();
+    renderJadwalMatrix(year, month);
+  } else {
+    wrap.innerHTML = '<div class="empty-state">Memuat jadwal toko...</div>';
+  }
+
+  setBgSync(true);
   try {
     const res = await apiCall({ action: 'getSchedules', toko, month, year });
     if (res.stores && res.stores.length) {
@@ -2227,22 +2763,33 @@ async function loadJadwalView() {
           : res.stores[0];
         tokoSel.value = toko;
         state.jadwalStore = toko;
-        return loadJadwalView();
+        setBgSync(false);
+        return loadJadwalView(forceRefresh);
       }
     }
 
-    state.jadwalStore = toko;
-    state.jadwalCrews = res.crews || [];
-    state.jadwalMap = {};
-    state.jadwalDirty = {};
+    const newMap = {};
     (res.schedules || []).forEach((s) => {
       const k = `${s.dateKey}|${s.crewId || s.nama.toUpperCase()}`;
-      state.jadwalMap[k] = s.status;
+      newMap[k] = s.status;
     });
+
+    state.cache.jadwal[`${toko}|${year}|${month}`] = {
+      crews: res.crews || [],
+      map: newMap
+    };
+
+    state.jadwalStore = toko;
+    state.jadwalCrews = res.crews || [];
+    state.jadwalMap = newMap;
+    state.jadwalDirty = {};
     updateJadwalDirtyInfo();
     renderJadwalMatrix(year, month);
   } catch (err) {
-    wrap.innerHTML = `<div class="empty-state">${esc(err.message)}</div>`;
+    if (!cached) wrap.innerHTML = `<div class="empty-state">${esc(err.message)}</div>`;
+    else showToast(err.message, 'error');
+  } finally {
+    setBgSync(false);
   }
 }
 
@@ -2342,6 +2889,98 @@ function renderJadwalMatrix(year, month) {
   }
 }
 
+async function copyPreviousWeekSchedules() {
+  if (!state.jadwalStore || !state.jadwalCrews.length) {
+    showToast('Pilih outlet yang sudah memiliki karyawan.', 'error');
+    return;
+  }
+
+  const year = Number(document.getElementById('jadwalYearSelect').value);
+  const month = Number(document.getElementById('jadwalMonthSelect').value);
+  const weekFilter = document.getElementById('jadwalWeekSelect').value;
+  const daysInMonth = new Date(year, month, 0).getDate();
+
+  let startDay = 1;
+  let endDay = daysInMonth;
+  if (weekFilter !== 'ALL') {
+    const w = Number(weekFilter);
+    startDay = (w - 1) * 7 + 1;
+    endDay = Math.min(daysInMonth, w * 7);
+  }
+
+  // Ambil jadwal 7 hari terakhir dari bulan sebelumnya agar salin lintas bulan tetap mulus
+  const prevEnd = new Date(year, month - 1, 0);
+  const prevStart = new Date(prevEnd.getFullYear(), prevEnd.getMonth(), prevEnd.getDate() - 6);
+  const prevStartKey = `${prevStart.getFullYear()}-${pad2(prevStart.getMonth() + 1)}-${pad2(prevStart.getDate())}`;
+  const prevEndKey = `${prevEnd.getFullYear()}-${pad2(prevEnd.getMonth() + 1)}-${pad2(prevEnd.getDate())}`;
+
+  setLoading(true, 'Mengambil pola jadwal minggu lalu...');
+  try {
+    const prevMap = Object.assign({}, state.jadwalMap);
+    Object.keys(state.jadwalDirty).forEach((k) => {
+      prevMap[k] = state.jadwalDirty[k].status;
+    });
+
+    if (startDay <= 7) {
+      const resPrev = await apiCall({
+        action: 'getSchedules',
+        toko: state.jadwalStore,
+        startDate: prevStartKey,
+        endDate: prevEndKey
+      });
+      (resPrev.schedules || []).forEach((s) => {
+        const k = `${s.dateKey}|${s.crewId || s.nama.toUpperCase()}`;
+        prevMap[k] = s.status;
+      });
+    }
+
+    let copiedCount = 0;
+    for (let d = startDay; d <= endDay; d++) {
+      const targetDate = new Date(year, month - 1, d);
+      const sourceDate = new Date(year, month - 1, d - 7);
+      const targetDk = `${targetDate.getFullYear()}-${pad2(targetDate.getMonth() + 1)}-${pad2(targetDate.getDate())}`;
+      const sourceDk = `${sourceDate.getFullYear()}-${pad2(sourceDate.getMonth() + 1)}-${pad2(sourceDate.getDate())}`;
+
+      state.jadwalCrews.forEach((c) => {
+        const crewKey = c.id || c.nama.toUpperCase();
+        const targetKey = `${targetDk}|${crewKey}`;
+        const sourceKey = `${sourceDk}|${crewKey}`;
+
+        // Di mode 1 Bulan Penuh, jangan menimpa tanggal yang sudah diisi manual
+        const existingTarget = state.jadwalDirty[targetKey] !== undefined
+          ? state.jadwalDirty[targetKey].status
+          : (state.jadwalMap[targetKey] || '');
+        if (weekFilter === 'ALL' && existingTarget) return;
+
+        const srcVal = prevMap[sourceKey] || '';
+        if (srcVal) {
+          state.jadwalDirty[targetKey] = {
+            dateKey: targetDk,
+            crewId: c.id,
+            nama: c.nama,
+            status: srcVal,
+            catatan: ''
+          };
+          prevMap[targetKey] = srcVal;
+          copiedCount++;
+        }
+      });
+    }
+
+    if (copiedCount === 0) {
+      showToast('Tidak ditemukan jadwal 7 hari sebelumnya untuk disalin.', 'error');
+    } else {
+      renderJadwalMatrix(year, month);
+      updateJadwalDirtyInfo();
+      showToast(`${copiedCount} kotak jadwal disalin! Cek kembali lalu klik Simpan Jadwal.`, 'success');
+    }
+  } catch (err) {
+    showToast(err.message, 'error');
+  } finally {
+    setLoading(false);
+  }
+}
+
 function onJadwalCellChange(e) {
   const sel = e.target;
   const dk = sel.dataset.dk;
@@ -2405,6 +3044,12 @@ async function saveJadwalChanges() {
       if (ent.status) state.jadwalMap[k] = ent.status;
       else delete state.jadwalMap[k];
     });
+    const m = Number(document.getElementById('jadwalMonthSelect').value);
+    const y = Number(document.getElementById('jadwalYearSelect').value);
+    state.cache.jadwal[`${state.jadwalStore}|${y}|${m}`] = {
+      crews: state.jadwalCrews,
+      map: Object.assign({}, state.jadwalMap)
+    };
     state.jadwalDirty = {};
     updateJadwalDirtyInfo();
     showToast(res.message || 'Jadwal tersimpan!', 'success');
@@ -2439,7 +3084,50 @@ function shortScheduleLabel(val) {
 
 /* ======================== INSIGHT & REKAP BULANAN ======================== */
 
-async function loadInsights(period, silent = false) {
+function renderInsightData(res) {
+  document.getElementById('insightPeriodDesc').textContent = `Perbandingan ${res.periodLabel} dibanding ${res.prevLabel}`;
+
+  const o = res.overall;
+  document.getElementById('insJam').textContent = `${o.curJam} jam`;
+  setDiffPill(document.getElementById('insJamDiff'), o.curJam, o.prevJam, ' jam', false);
+
+  document.getElementById('insHadir').textContent = `${o.curHadir} hari`;
+  setDiffPill(document.getElementById('insHadirDiff'), o.curHadir, o.prevHadir, ' hari', false);
+
+  document.getElementById('insTelat').textContent = `${o.curTelat}x`;
+  setDiffPill(document.getElementById('insTelatDiff'), o.curTelat, o.prevTelat, 'x', true);
+
+  document.getElementById('insStoreTable').innerHTML = (res.perStore || []).map((s) => `
+    <tr class="clickable-row" onclick="openStoreDetail(decodeURIComponent('${encodeURIComponent(s.toko)}'))">
+      <td>
+        <div class="row-entity-cell">
+          <span class="row-init-badge">${esc(getInitials(s.toko))}</span>
+          <span class="row-entity-name">${esc(s.toko)}</span>
+        </div>
+      </td>
+      <td><strong>${s.curJam}j</strong> <small class="subtitle">(lalu ${s.prevJam}j)</small></td>
+      <td><span class="num-pill num-pill-ok">${s.curHadir}</span> <small class="subtitle">(lalu ${s.prevHadir})</small></td>
+      <td>${s.curTelat > 0 ? `<span class="num-pill num-pill-danger">${s.curTelat}</span>` : '0'} <small class="subtitle">(lalu ${s.prevTelat})</small></td>
+    </tr>
+  `).join('') || '<tr><td colspan="4" class="text-center">Belum ada data.</td></tr>';
+
+  document.getElementById('insCrewTable').innerHTML = (res.perCrew || []).map((c) => `
+    <tr>
+      <td>
+        <div class="row-entity-cell">
+          <span class="row-init-badge">${esc(getInitials(c.nama))}</span>
+          <span class="row-entity-name">${esc(c.nama)}</span>
+        </div>
+      </td>
+      <td>${esc(c.toko)}</td>
+      <td><strong>${c.curJam}j</strong> <small class="subtitle">(${c.prevJam}j)</small></td>
+      <td><span class="num-pill num-pill-ok">${c.curHadir}</span> <small class="subtitle">(${c.prevHadir})</small></td>
+      <td>${c.curTelat > 0 ? `<span class="num-pill num-pill-danger">${c.curTelat}</span>` : '0'} <small class="subtitle">(${c.prevTelat})</small></td>
+    </tr>
+  `).join('') || '<tr><td colspan="5" class="text-center">Belum ada data.</td></tr>';
+}
+
+async function loadInsights(period, forceRefresh = false) {
   const isAdmin = state.user.role === 'ADMIN';
   document.getElementById('insightTopSwitcher').classList.toggle('hidden', state.user.role === 'MONITORING');
   document.getElementById('insightPageTitle').textContent = isAdmin ? 'Insight & Rekap Gaji' : 'Insight Performa Outlet';
@@ -2447,56 +3135,22 @@ async function loadInsights(period, silent = false) {
   const activeBtn = document.querySelector('#insightPeriodToggle .seg-btn.active');
   const p = period || (activeBtn ? activeBtn.dataset.period : 'week');
 
-  if (!silent) setLoading(true, 'Menghitung insight...');
+  if (!forceRefresh && state.cache.insight[p]) {
+    renderInsightData(state.cache.insight[p]);
+  }
+
+  setBgSync(true);
   try {
     const res = await apiCall({
       action: isAdmin ? 'getInsights' : 'getMonitoringInsights',
       period: p
     });
-    document.getElementById('insightPeriodDesc').textContent = `Perbandingan ${res.periodLabel} dibanding ${res.prevLabel}`;
-
-    const o = res.overall;
-    document.getElementById('insJam').textContent = `${o.curJam} jam`;
-    setDiffPill(document.getElementById('insJamDiff'), o.curJam, o.prevJam, ' jam', false);
-
-    document.getElementById('insHadir').textContent = `${o.curHadir} hari`;
-    setDiffPill(document.getElementById('insHadirDiff'), o.curHadir, o.prevHadir, ' hari', false);
-
-    document.getElementById('insTelat').textContent = `${o.curTelat}x`;
-    setDiffPill(document.getElementById('insTelatDiff'), o.curTelat, o.prevTelat, 'x', true);
-
-    document.getElementById('insStoreTable').innerHTML = (res.perStore || []).map((s) => `
-      <tr class="clickable-row" onclick="openStoreDetail(decodeURIComponent('${encodeURIComponent(s.toko)}'))">
-        <td>
-          <div class="row-entity-cell">
-            <span class="row-init-badge">${esc(getInitials(s.toko))}</span>
-            <span class="row-entity-name">${esc(s.toko)}</span>
-          </div>
-        </td>
-        <td><strong>${s.curJam}j</strong> <small class="subtitle">(lalu ${s.prevJam}j)</small></td>
-        <td><span class="num-pill num-pill-ok">${s.curHadir}</span> <small class="subtitle">(lalu ${s.prevHadir})</small></td>
-        <td>${s.curTelat > 0 ? `<span class="num-pill num-pill-danger">${s.curTelat}</span>` : '0'} <small class="subtitle">(lalu ${s.prevTelat})</small></td>
-      </tr>
-    `).join('') || '<tr><td colspan="4" class="text-center">Belum ada data.</td></tr>';
-
-    document.getElementById('insCrewTable').innerHTML = (res.perCrew || []).map((c) => `
-      <tr>
-        <td>
-          <div class="row-entity-cell">
-            <span class="row-init-badge">${esc(getInitials(c.nama))}</span>
-            <span class="row-entity-name">${esc(c.nama)}</span>
-          </div>
-        </td>
-        <td>${esc(c.toko)}</td>
-        <td><strong>${c.curJam}j</strong> <small class="subtitle">(${c.prevJam}j)</small></td>
-        <td><span class="num-pill num-pill-ok">${c.curHadir}</span> <small class="subtitle">(${c.prevHadir})</small></td>
-        <td>${c.curTelat > 0 ? `<span class="num-pill num-pill-danger">${c.curTelat}</span>` : '0'} <small class="subtitle">(${c.prevTelat})</small></td>
-      </tr>
-    `).join('') || '<tr><td colspan="5" class="text-center">Belum ada data.</td></tr>';
+    state.cache.insight[p] = res;
+    renderInsightData(res);
   } catch (err) {
     showToast(err.message, 'error');
   } finally {
-    if (!silent) setLoading(false);
+    setBgSync(false);
   }
 }
 
@@ -2681,11 +3335,11 @@ async function confirmDeleteAction() {
     } else if (item.type === 'crew') {
       await apiCall({ action: 'deleteCrew', id: item.id });
       showToast('Karyawan dihapus.', 'success');
-      loadMasterData();
+      loadMasterData(true);
     } else if (item.type === 'store') {
       await apiCall({ action: 'deleteStore', nama: item.nama });
       showToast('Toko dihapus.', 'success');
-      loadMasterData();
+      loadMasterData(true);
     }
   } catch (err) {
     showToast(err.message, 'error');
@@ -2696,86 +3350,178 @@ async function confirmDeleteAction() {
 }
 
 function refreshCurrentAdminView() {
-  if (!document.getElementById('viewDashboard').classList.contains('hidden')) loadDashboard();
+  if (!document.getElementById('viewDashboard').classList.contains('hidden')) loadDashboard(true);
   if (!document.getElementById('viewRiwayat').classList.contains('hidden')) loadHistory();
 }
 
-/* ======================== KELOLA MASTER (ADMIN ONLY) ======================== */
+/* ======================== KELOLA OUTLET & KARYAWAN TERPADU (ADMIN ONLY) ======================== */
 
-async function loadMasterData(silent = false) {
-  if (!silent) setLoading(true, 'Memuat data master...');
+async function loadMasterData(forceRefresh = false) {
+  if (!forceRefresh && state.cache.masterLoaded) {
+    renderManagedOutletsAndCrews();
+  }
+
+  setBgSync(true);
   try {
     const res = await apiCall({ action: 'getMasterData' });
     state.stores = res.stores || [];
     state.crews = res.crews || [];
+    state.cache.masterLoaded = true;
     localStorage.setItem('momoyo_stores', JSON.stringify(state.stores));
     populateFilterStores();
     syncGreetingInputs();
-
-    const crewEl = document.getElementById('manageCrewList');
-    crewEl.innerHTML = state.crews.map((c) => {
-      const enc = encodeURIComponent(JSON.stringify(c));
-      const initials = getInitials(c.nama);
-      const avatarHtml = c.fotoProfil
-        ? `<img src="${esc(toDisplayImageUrl(c.fotoProfil))}" alt="${esc(c.nama)}" />`
-        : esc(initials);
-      const subParts = [c.toko];
-      if (c.posisi) subParts.push(c.posisi);
-      if (c.area) subParts.push(c.area);
-
-      return `
-        <div class="record-card">
-          <div class="record-top">
-            <div style="display:flex;align-items:center;gap:10px">
-              <div class="crew-mini-avatar">${avatarHtml}</div>
-              <div>
-                <div class="record-title">${esc(c.nama)}</div>
-                <div class="record-sub">${esc(subParts.join(' • '))}</div>
-                ${c.noTelp ? `<div class="record-sub">Telp: ${esc(c.noTelp)}</div>` : ''}
-              </div>
-            </div>
-            <span class="badge ${c.aktif ? 'badge-masuk' : 'badge-neutral'}">${c.aktif ? 'Aktif' : 'Nonaktif'}</span>
-          </div>
-          <div class="record-bottom">
-            <span class="record-sub">ID: ${esc(c.id)}</span>
-            <div class="record-actions">
-              <button type="button" class="btn-ghost-sm" onclick="openCrewModal('${enc}')">Edit / Profil &amp; PIN</button>
-              <button type="button" class="btn-ghost-sm text-danger" onclick="askDeleteCrew('${esc(c.id)}', '${esc(c.nama)}')">Hapus</button>
-            </div>
-          </div>
-        </div>
-      `;
-    }).join('') || '<div class="empty-state">Belum ada data karyawan.</div>';
-
-    const storeEl = document.getElementById('manageStoreList');
-    storeEl.innerHTML = state.stores.map((s) => {
-      const enc = encodeURIComponent(JSON.stringify(s));
-      return `
-        <div class="record-card">
-          <div class="record-top">
-            <div>
-              <div class="record-title">${esc(s.nama)}</div>
-              <div class="record-sub">Pagi ${s.pagiMulai}–${s.pagiSelesai} | Siang ${s.siangMulai}–${s.siangSelesai} | Full Day ${s.fullDayMulai || s.pagiMulai}–${s.fullDaySelesai || s.siangSelesai}</div>
-              <div class="record-sub">Toleransi telat: ${s.toleransi} menit</div>
-            </div>
-            <span class="badge ${s.wajibGps ? 'badge-masuk' : 'badge-neutral'}">${s.wajibGps ? 'GPS Aktif' : 'GPS Off'}</span>
-          </div>
-          <div class="record-bottom">
-            <span class="record-sub">${s.wajibGps ? `Radius ${s.radius}m` : 'Absen fleksibel'}</span>
-            <div class="record-actions">
-              <button type="button" class="btn-ghost-sm" onclick="openStoreModal('${enc}')">Edit</button>
-              <button type="button" class="btn-ghost-sm text-danger" onclick="askDeleteStore(decodeURIComponent('${encodeURIComponent(s.nama)}'))">Hapus</button>
-            </div>
-          </div>
-        </div>
-      `;
-    }).join('') || '<div class="empty-state">Belum ada data toko.</div>';
+    renderManagedOutletsAndCrews();
   } catch (err) {
     showToast(err.message, 'error');
   } finally {
-    if (!silent) setLoading(false);
+    setBgSync(false);
   }
 }
+
+function getPosRankClient(posisi) {
+  const p = String(posisi || '').toUpperCase();
+  if (p.includes('SUPERVISOR')) return 0;
+  if (p.includes('KEPALA TOKO')) return 1;
+  if (p.includes('KEPALA')) return 2;
+  return 3;
+}
+
+function renderManagedOutletsAndCrews() {
+  const container = document.getElementById('manageOutletCrewList');
+  if (!container) return;
+
+  const query = (document.getElementById('manageCrewSearch')?.value || '').trim().toLowerCase();
+  const stores = state.stores || [];
+  const crews = state.crews || [];
+
+  if (!stores.length && !crews.length) {
+    container.innerHTML = '<div class="empty-state">Belum ada data outlet atau karyawan.</div>';
+    return;
+  }
+
+  const knownStoreUps = new Set(stores.map((s) => s.nama.toUpperCase()));
+  const groups = stores.map((st) => ({
+    store: st,
+    name: st.nama,
+    crews: crews.filter((c) => c.toko.toUpperCase() === st.nama.toUpperCase())
+  }));
+
+  const orphanCrews = crews.filter((c) => !knownStoreUps.has(c.toko.toUpperCase()));
+  if (orphanCrews.length) {
+    groups.push({ store: null, name: 'LAINNYA', crews: orphanCrews });
+  }
+
+  const html = groups.map((g) => {
+    const sortedCrews = [...g.crews].sort((a, b) => {
+      if (a.aktif !== b.aktif) return a.aktif ? -1 : 1;
+      const ra = getPosRankClient(a.posisi);
+      const rb = getPosRankClient(b.posisi);
+      if (ra !== rb) return ra - rb;
+      return a.nama.localeCompare(b.nama);
+    });
+
+    const filteredCrews = query
+      ? sortedCrews.filter((c) =>
+          c.nama.toLowerCase().includes(query) ||
+          c.id.toLowerCase().includes(query) ||
+          (c.posisi || '').toLowerCase().includes(query) ||
+          g.name.toLowerCase().includes(query)
+        )
+      : sortedCrews;
+
+    if (query && !filteredCrews.length && !g.name.toLowerCase().includes(query)) {
+      return '';
+    }
+
+    const activeCount = sortedCrews.filter((c) => c.aktif).length;
+    const isOpen = query ? true : Boolean(state.openManageOutlets[g.name]);
+    const st = g.store;
+    const encStore = st ? encodeURIComponent(JSON.stringify(st)) : '';
+    const encName = encodeURIComponent(g.name);
+
+    const crewItemsHtml = filteredCrews.length
+      ? filteredCrews.map((c) => {
+          const encCrew = encodeURIComponent(JSON.stringify(c));
+          const initials = getInitials(c.nama);
+          const avatarHtml = c.fotoProfil
+            ? `<img src="${esc(toDisplayImageUrl(c.fotoProfil))}" alt="${esc(c.nama)}" />`
+            : esc(initials);
+          const subParts = [c.posisi || 'Karyawan'];
+          if (c.area) subParts.push(c.area);
+          const waBtn = buildWaButtonHtml(c.noTelp, `Halo ${c.nama} (MOMOYO ${c.toko}), `);
+
+          return `
+            <div class="outlet-crew-item">
+              <div class="record-top">
+                <div style="display:flex;align-items:center;gap:10px;min-width:0">
+                  <div class="crew-mini-avatar">${avatarHtml}</div>
+                  <div style="min-width:0">
+                    <div class="record-title">${esc(c.nama)}</div>
+                    <div class="record-sub">${esc(subParts.join(' • '))}</div>
+                    ${c.noTelp ? `<div class="record-sub">Telp: ${esc(c.noTelp)}</div>` : ''}
+                  </div>
+                </div>
+                <span class="badge ${c.aktif ? 'badge-masuk' : 'badge-neutral'}">${c.aktif ? 'Aktif' : 'Nonaktif'}</span>
+              </div>
+              <div class="record-bottom">
+                <span class="record-sub"><strong>ID: ${esc(c.id)}</strong></span>
+                <div class="record-actions">
+                  ${waBtn}
+                  <button type="button" class="btn-ghost-sm" onclick="openCrewModal('${encCrew}')">Edit / ID &amp; PIN</button>
+                  <button type="button" class="btn-ghost-sm text-danger" onclick="askDeleteCrew('${esc(c.id)}', '${esc(c.nama)}')">Hapus</button>
+                </div>
+              </div>
+            </div>
+          `;
+        }).join('')
+      : '<div class="empty-state" style="padding:16px">Belum ada karyawan di cabang ini.</div>';
+
+    return `
+      <div class="outlet-manage-card">
+        <div class="outlet-manage-head">
+          <div class="outlet-manage-top" onclick="toggleManageOutlet(decodeURIComponent('${encName}'))">
+            <div class="outlet-manage-title-wrap">
+              <span class="row-init-badge">${esc(getInitials(g.name))}</span>
+              <div>
+                <div class="record-title">${esc(g.name)}</div>
+                ${st ? `
+                  <div class="record-sub">Pagi ${st.pagiMulai}–${st.pagiSelesai} | Siang ${st.siangMulai}–${st.siangSelesai} | Full Day ${st.fullDayMulai || st.pagiMulai}–${st.fullDaySelesai || st.siangSelesai}</div>
+                  <div class="record-sub">Toleransi telat: ${st.toleransi} menit • ${st.wajibGps ? `GPS Radius ${st.radius}m` : 'Absen fleksibel'}</div>
+                ` : '<div class="record-sub">Cabang belum terdaftar di Master Toko</div>'}
+              </div>
+            </div>
+            <div class="outlet-manage-badges">
+              <span class="outlet-count-pill">${activeCount}/${sortedCrews.length} Karyawan</span>
+              ${st ? `<span class="badge ${st.wajibGps ? 'badge-masuk' : 'badge-neutral'}">${st.wajibGps ? 'GPS On' : 'GPS Off'}</span>` : ''}
+            </div>
+          </div>
+
+          <div class="outlet-manage-actions">
+            <button type="button" class="btn-pill-soft" onclick="toggleManageOutlet(decodeURIComponent('${encName}'))">
+              ${isOpen ? 'Tutup Daftar Karyawan ▲' : `Lihat Karyawan (${filteredCrews.length}) ▼`}
+            </button>
+            <div class="record-actions">
+              ${st ? `<button type="button" class="btn-ghost-sm text-primary" onclick="openCrewModal('', decodeURIComponent('${encName}'))">+ Karyawan</button>` : ''}
+              ${st ? `<button type="button" class="btn-ghost-sm" onclick="openStoreModal('${encStore}')">Setting Outlet</button>` : ''}
+              ${st ? `<button type="button" class="btn-ghost-sm text-danger" onclick="askDeleteStore(decodeURIComponent('${encName}'))">Hapus</button>` : ''}
+            </div>
+          </div>
+        </div>
+
+        <div class="outlet-crew-panel ${isOpen ? '' : 'hidden'}">
+          ${crewItemsHtml}
+        </div>
+      </div>
+    `;
+  }).filter(Boolean).join('');
+
+  container.innerHTML = html || '<div class="empty-state">Tidak ditemukan outlet atau karyawan yang cocok.</div>';
+}
+
+window.toggleManageOutlet = function (storeName) {
+  state.openManageOutlets[storeName] = !state.openManageOutlets[storeName];
+  renderManagedOutletsAndCrews();
+};
 
 function setPosisiFieldValue(rawPosisi) {
   const sel = document.getElementById('crewPosisiInput');
@@ -2802,7 +3548,7 @@ function setPosisiFieldValue(rawPosisi) {
   }
 }
 
-window.openCrewModal = function (encoded) {
+window.openCrewModal = function (encoded, presetStore = '') {
   const tokoSel = document.getElementById('crewTokoInput');
   tokoSel.innerHTML = state.stores.map((s) => `<option value="${esc(s.nama)}">${esc(s.nama)}</option>`).join('');
 
@@ -2817,7 +3563,8 @@ window.openCrewModal = function (encoded) {
 
   if (encoded) {
     const c = JSON.parse(decodeURIComponent(encoded));
-    document.getElementById('modalCrewTitle').textContent = 'Edit Karyawan / Profil & PIN';
+    document.getElementById('modalCrewTitle').textContent = 'Edit Karyawan / ID, Profil & PIN';
+    document.getElementById('crewOriginalIdInput').value = c.id;
     document.getElementById('crewIdInput').value = c.id;
     document.getElementById('crewNamaInput').value = c.nama;
     tokoSel.value = c.toko;
@@ -2845,8 +3592,12 @@ window.openCrewModal = function (encoded) {
     }
   } else {
     document.getElementById('modalCrewTitle').textContent = 'Tambah Karyawan Baru';
+    document.getElementById('crewOriginalIdInput').value = '';
     document.getElementById('crewIdInput').value = '';
     document.getElementById('crewNamaInput').value = '';
+    if (presetStore && [...tokoSel.options].some((o) => o.value === presetStore)) {
+      tokoSel.value = presetStore;
+    }
     document.getElementById('crewAreaInput').value = '';
     setPosisiFieldValue('Crew Minuman');
     document.getElementById('crewTelpInput').value = '';
@@ -2886,14 +3637,16 @@ async function submitCrewForm(e) {
     }
   }
 
+  const tokoVal = document.getElementById('crewTokoInput').value;
   setLoading(true, 'Menyimpan data karyawan...');
   try {
-    await apiCall({
+    const res = await apiCall({
       action: 'saveCrew',
       crew: {
-        id: document.getElementById('crewIdInput').value,
+        originalId: document.getElementById('crewOriginalIdInput').value.trim(),
+        id: document.getElementById('crewIdInput').value.trim(),
         nama: document.getElementById('crewNamaInput').value.trim(),
-        toko: document.getElementById('crewTokoInput').value,
+        toko: tokoVal,
         area: document.getElementById('crewAreaInput').value,
         posisi: finalPosisi,
         noTelp: document.getElementById('crewTelpInput').value.trim(),
@@ -2904,8 +3657,9 @@ async function submitCrewForm(e) {
       }
     }, 45000);
     closeModal('modalCrew');
-    showToast('Data karyawan tersimpan.', 'success');
-    loadMasterData();
+    state.openManageOutlets[tokoVal] = true;
+    showToast(res.message || 'Data karyawan tersimpan.', 'success');
+    loadMasterData(true);
   } catch (err) {
     showToast(err.message, 'error');
   } finally {
@@ -2925,7 +3679,7 @@ window.openStoreModal = function (encoded) {
 
   if (encoded) {
     const s = JSON.parse(decodeURIComponent(encoded));
-    document.getElementById('modalStoreTitle').textContent = 'Edit Cabang Toko';
+    document.getElementById('modalStoreTitle').textContent = 'Setting Cabang Outlet';
     document.getElementById('storeOriginalName').value = s.nama;
     document.getElementById('storeNamaInput').value = s.nama;
     document.getElementById('storePagiMulai').value = s.pagiMulai;
@@ -2940,7 +3694,7 @@ window.openStoreModal = function (encoded) {
     document.getElementById('storeLng').value = s.lng || '';
     document.getElementById('storeRadius').value = s.radius || 100;
   } else {
-    document.getElementById('modalStoreTitle').textContent = 'Tambah Cabang Toko';
+    document.getElementById('modalStoreTitle').textContent = 'Tambah Cabang Outlet';
     document.getElementById('storeOriginalName').value = '';
     document.getElementById('storeNamaInput').value = '';
     document.getElementById('storePagiMulai').value = '08:00';
@@ -2961,7 +3715,7 @@ window.openStoreModal = function (encoded) {
 
 async function submitStoreForm(e) {
   e.preventDefault();
-  setLoading(true, 'Menyimpan data toko...');
+  setLoading(true, 'Menyimpan data outlet...');
   try {
     await apiCall({
       action: 'saveStore',
@@ -2982,8 +3736,8 @@ async function submitStoreForm(e) {
       }
     });
     closeModal('modalStore');
-    showToast('Data toko tersimpan.', 'success');
-    loadMasterData();
+    showToast('Data outlet tersimpan.', 'success');
+    loadMasterData(true);
   } catch (err) {
     showToast(err.message, 'error');
   } finally {
@@ -3039,20 +3793,31 @@ function bindEvents() {
     btn.addEventListener('click', () => switchView(btn.dataset.switchView));
   });
 
+  // Accordion Dashboard & Monitoring
+  document.querySelectorAll('.acc-head[data-acc-target]').forEach((headBtn) => {
+    headBtn.addEventListener('click', () => {
+      const body = document.getElementById(headBtn.dataset.accTarget);
+      if (!body) return;
+      const opening = body.classList.contains('hidden');
+      body.classList.toggle('hidden', !opening);
+      headBtn.classList.toggle('is-open', opening);
+    });
+  });
+
+  // Kartu ringkas Detail Absensi Hari Ini -> buka Riwayat terfilter hari ini
+  document.getElementById('btnOpenTodayHistoryCard').addEventListener('click', openTodayHistoryFromDashboard);
+
+  // Profil
   document.getElementById('btnOpenProfile').addEventListener('click', openProfileModal);
   document.getElementById('btnPickMyPhoto').addEventListener('click', () => document.getElementById('inputMyPhoto').click());
   document.getElementById('inputMyPhoto').addEventListener('change', handleMyPhotoPick);
   document.getElementById('btnClearMyPhoto').addEventListener('click', clearMyPhoto);
   document.getElementById('formAdminProfile').addEventListener('submit', submitAdminProfileForm);
 
+  // Form Absensi & Kamera Live
   document.querySelectorAll('#formAbsen .seg-btn').forEach((btn) => {
     btn.addEventListener('click', () => {
-      document.querySelectorAll('#formAbsen .seg-btn').forEach((b) => b.classList.remove('active'));
-      btn.classList.add('active');
-      const jenis = btn.dataset.jenis;
-      document.getElementById('absenJenis').value = jenis;
-      document.getElementById('breakRuleHint').classList.toggle('hidden', jenis !== 'ISTIRAHAT');
-      updateAbsenGreetingDisplay();
+      setSelectedAbsenJenis(btn.dataset.jenis, true);
     });
   });
 
@@ -3062,14 +3827,23 @@ function bindEvents() {
     loadActiveBreaksForAbsen();
   });
   document.getElementById('btnRefreshStoreBreaks').addEventListener('click', loadActiveBreaksForAbsen);
-  document.getElementById('btnPickGallery').addEventListener('click', () => document.getElementById('inputFotoGaleri').click());
-  document.getElementById('btnOpenCamera').addEventListener('click', () => document.getElementById('inputFotoKamera').click());
-  document.getElementById('inputFotoGaleri').addEventListener('change', handlePhotoSelected);
-  document.getElementById('inputFotoKamera').addEventListener('change', handlePhotoSelected);
+  document.getElementById('btnOpenCamera').addEventListener('click', openLiveCameraModal);
+  document.getElementById('inputFotoKamera').addEventListener('change', handleNativeCameraSelected);
+  document.getElementById('btnCloseLiveCamera').addEventListener('click', stopLiveCamera);
+  document.getElementById('btnFlipCamera').addEventListener('click', () => {
+    liveCam.facingMode = liveCam.facingMode === 'user' ? 'environment' : 'user';
+    startLiveCameraStream();
+  });
+  document.getElementById('btnCaptureLivePhoto').addEventListener('click', captureFromLiveCamera);
+  document.getElementById('btnFallbackNativeCam').addEventListener('click', () => {
+    stopLiveCamera();
+    document.getElementById('inputFotoKamera').click();
+  });
   document.getElementById('btnRemovePhoto').addEventListener('click', clearPhoto);
   document.getElementById('formAbsen').addEventListener('submit', submitAttendance);
   document.getElementById('btnRetryAbsen').addEventListener('click', () => submitAttendance());
 
+  // Kalender
   document.getElementById('btnRefreshMyCalendar').addEventListener('click', loadCrewCalendar);
   document.getElementById('btnCalPrev').addEventListener('click', () => {
     state.calMonth -= 1;
@@ -3093,6 +3867,7 @@ function bindEvents() {
     loadAdminCrewCalendar();
   });
 
+  // Riwayat & Galeri
   document.getElementById('btnApplyFilter').addEventListener('click', loadHistory);
   document.getElementById('btnRefreshHistory').addEventListener('click', loadHistory);
   document.getElementById('btnResetFilter').addEventListener('click', () => {
@@ -3113,18 +3888,21 @@ function bindEvents() {
     renderHistoryCurrentMode();
   });
 
-  document.getElementById('btnRefreshDash').addEventListener('click', () => loadDashboard());
+  // Dashboard & Detail Toko
+  document.getElementById('btnRefreshDash').addEventListener('click', () => loadDashboard(true));
   document.getElementById('btnReloadStoreDetail').addEventListener('click', loadStoreDetailData);
 
-  document.getElementById('jadwalTokoSelect').addEventListener('change', loadJadwalView);
-  document.getElementById('jadwalMonthSelect').addEventListener('change', loadJadwalView);
-  document.getElementById('jadwalYearSelect').addEventListener('change', loadJadwalView);
+  // Jadwal Shift
+  document.getElementById('jadwalTokoSelect').addEventListener('change', () => loadJadwalView());
+  document.getElementById('jadwalMonthSelect').addEventListener('change', () => loadJadwalView());
+  document.getElementById('jadwalYearSelect').addEventListener('change', () => loadJadwalView());
   document.getElementById('jadwalWeekSelect').addEventListener('change', () => {
     const m = Number(document.getElementById('jadwalMonthSelect').value);
     const y = Number(document.getElementById('jadwalYearSelect').value);
     renderJadwalMatrix(y, m);
   });
-  document.getElementById('btnReloadJadwal').addEventListener('click', loadJadwalView);
+  document.getElementById('btnReloadJadwal').addEventListener('click', () => loadJadwalView(true));
+  document.getElementById('btnCopyPrevWeek').addEventListener('click', copyPreviousWeekSchedules);
   document.getElementById('btnSaveJadwal').addEventListener('click', saveJadwalChanges);
 
   document.getElementById('btnConfirmJadwalBko').addEventListener('click', () => {
@@ -3145,6 +3923,7 @@ function bindEvents() {
     state.jadwalBkoPending = null;
   });
 
+  // Insight & Rekap
   document.querySelectorAll('#insightPeriodToggle .seg-btn').forEach((btn) => {
     btn.addEventListener('click', () => {
       document.querySelectorAll('#insightPeriodToggle .seg-btn').forEach((b) => b.classList.remove('active'));
@@ -3155,8 +3934,9 @@ function bindEvents() {
   document.getElementById('btnLoadRecap').addEventListener('click', loadMonthlyRecap);
   document.getElementById('btnExportCsv').addEventListener('click', exportRecapCsv);
 
+  // Kelola
+  document.getElementById('manageCrewSearch').addEventListener('input', renderManagedOutletsAndCrews);
   document.getElementById('formAbsenGreetings').addEventListener('submit', saveAbsenGreetings);
-
   document.getElementById('formEditRecord').addEventListener('submit', submitEditRecord);
   document.getElementById('btnConfirmDelete').addEventListener('click', confirmDeleteAction);
   document.getElementById('btnAddCrew').addEventListener('click', () => openCrewModal());
