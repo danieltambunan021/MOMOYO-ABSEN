@@ -44,7 +44,7 @@
     </div>
   </div>
 
-  <!-- Bar Atas Merah Efek Lelehan Es Krim (Tampil di Semua Halaman) -->
+  <!-- Bar Atas Merah + Efek Lelehan Es Krim 3D Glossy Menyatu Mulus -->
   <div class="momoyo-top-wrap">
     <div class="momoyo-red-bar">
       <div class="momoyo-bar-inner">
@@ -57,10 +57,44 @@
         <span class="momoyo-bar-cheer">SEMANGATT</span>
       </div>
     </div>
-    <svg class="icecream-drip-svg" viewBox="0 0 1440 28" preserveAspectRatio="none" aria-hidden="true">
-      <path d="M0,0 L1440,0 L1440,5 C1390,5 1378,19 1362,19 C1346,19 1336,5 1292,5 C1248,5 1236,15 1222,15 C1208,15 1196,5 1126,5 C1078,5 1068,24 1054,24 C1040,24 1030,5 966,5 C910,5 896,17 880,17 C864,17 852,5 776,5 C740,5 728,25 714,25 C700,25 690,5 612,5 C558,5 546,15 532,15 C518,15 508,5 436,5 C392,5 382,22 368,22 C354,22 344,5 268,5 C210,5 198,16 184,16 C170,16 160,5 106,5 C90,5 82,24 68,24 C54,24 44,5 0,5 Z" fill="#C81E2B"/>
-    </svg>
+    <div class="icecream-drip-wrap" aria-hidden="true">
+      <svg class="icecream-drip-svg" viewBox="0 0 1440 42" preserveAspectRatio="none">
+        <defs>
+          <linearGradient id="momoyoDripGrad" x1="0" y1="0" x2="0" y2="1">
+            <stop offset="0%" stop-color="#C81E2B" />
+            <stop offset="62%" stop-color="#BE1B27" />
+            <stop offset="100%" stop-color="#A61420" />
+          </linearGradient>
+          <linearGradient id="momoyoDripShade" x1="0" y1="0" x2="0" y2="1">
+            <stop offset="0%" stop-color="#7F0F19" stop-opacity="0.22" />
+            <stop offset="100%" stop-color="#7F0F19" stop-opacity="0" />
+          </linearGradient>
+          <linearGradient id="momoyoGloss" x1="0" y1="0" x2="0" y2="1">
+            <stop offset="0%" stop-color="#FFFFFF" stop-opacity="0.58" />
+            <stop offset="100%" stop-color="#FFFFFF" stop-opacity="0.06" />
+          </linearGradient>
+        </defs>
+        <!-- Bayangan halus tetesan -->
+        <path d="M0,2 L1440,2 L1440,10 C1408,10 1396,12 1388,24 C1382,34 1368,36 1360,26 C1352,16 1344,11 1316,11 C1288,11 1276,13 1270,22 C1264,31 1252,31 1246,21 C1240,12 1226,10 1190,10 C1154,10 1142,14 1134,29 C1126,41 1110,41 1102,28 C1094,14 1082,11 1044,11 C1006,11 996,14 990,23 C984,32 972,32 966,22 C960,13 946,10 906,10 C866,10 854,14 846,27 C838,39 822,39 814,27 C806,14 794,11 756,11 C718,11 706,15 698,30 C690,42 674,42 666,29 C658,15 644,11 606,11 C568,11 556,14 550,24 C544,33 532,33 526,23 C520,13 506,10 468,10 C430,10 418,14 410,28 C402,40 386,40 378,27 C370,14 358,11 320,11 C282,11 270,14 264,23 C258,31 246,31 240,22 C234,13 220,10 184,10 C148,10 136,14 128,28 C120,40 104,40 96,27 C88,14 76,11 40,11 C20,11 8,10 0,10 Z" fill="url(#momoyoDripShade)" />
+        <!-- Bentuk utama tetesan es krim 3D -->
+        <path d="M0,0 L1440,0 L1440,8 C1408,8 1396,10 1388,22 C1382,32 1368,34 1360,24 C1352,14 1344,9 1316,9 C1288,9 1276,11 1270,20 C1264,29 1252,29 1246,19 C1240,10 1226,8 1190,8 C1154,8 1142,12 1134,27 C1126,39 1110,39 1102,26 C1094,12 1082,9 1044,9 C1006,9 996,12 990,21 C984,30 972,30 966,20 C960,11 946,8 906,8 C866,8 854,12 846,25 C838,37 822,37 814,25 C806,12 794,9 756,9 C718,9 706,13 698,28 C690,40 674,40 666,27 C658,13 644,9 606,9 C568,9 556,12 550,22 C544,31 532,31 526,21 C520,11 506,8 468,8 C430,8 418,12 410,26 C402,38 386,38 378,25 C370,12 358,9 320,9 C282,9 270,12 264,21 C258,29 246,29 240,20 C234,11 220,8 184,8 C148,8 136,12 128,26 C120,38 104,38 96,25 C88,12 76,9 40,9 C20,9 8,8 0,8 Z" fill="url(#momoyoDripGrad)" />
+        <!-- Kilau glossy 3D pada setiap tetesan -->
+        <ellipse cx="111" cy="25" rx="7" ry="4" fill="url(#momoyoGloss)" />
+        <ellipse cx="251" cy="20" rx="5.5" ry="3.2" fill="url(#momoyoGloss)" />
+        <ellipse cx="393" cy="26" rx="7" ry="4" fill="url(#momoyoGloss)" />
+        <ellipse cx="537" cy="21" rx="5.5" ry="3.2" fill="url(#momoyoGloss)" />
+        <ellipse cx="681" cy="27" rx="7.5" ry="4.2" fill="url(#momoyoGloss)" />
+        <ellipse cx="829" cy="25" rx="7" ry="4" fill="url(#momoyoGloss)" />
+        <ellipse cx="977" cy="20" rx="5.5" ry="3.2" fill="url(#momoyoGloss)" />
+        <ellipse cx="1117" cy="26" rx="7.2" ry="4.2" fill="url(#momoyoGloss)" />
+        <ellipse cx="1257" cy="19" rx="5.5" ry="3.2" fill="url(#momoyoGloss)" />
+        <ellipse cx="1373" cy="22" rx="6.5" ry="3.6" fill="url(#momoyoGloss)" />
+      </svg>
+    </div>
   </div>
+
+  <!-- Indikator Sinkronisasi Latar Belakang (Pindah Tab Instan Tanpa Layar Blokir) -->
+  <div id="bgSyncBar" class="bg-sync-bar hidden" aria-hidden="true"></div>
 
   <!-- Indikator Pull-to-Refresh (Tarik Layar ke Bawah) -->
   <div id="ptrIndicator" class="ptr-indicator" aria-hidden="true">
@@ -136,7 +170,7 @@
         <div class="monitor-intro-box">
           <strong>Management Monitoring — Live Outlet</strong>
           <p class="subtitle mt-8">
-            Pantau kehadiran hari ini, karyawan sedang istirahat, jadwal shift per toko, kalender tiap karyawan, dan bukti foto absensi secara langsung (hanya lihat / tidak bisa edit).
+            Pantau kehadiran hari ini, deteksi belum hadir, karyawan istirahat, keterlambatan, jadwal shift per toko, kalender karyawan, dan bukti foto absensi secara langsung (hanya lihat).
           </p>
         </div>
         <button type="button" id="btnEnterMonitoring" class="btn btn-primary btn-block mt-12">
@@ -179,6 +213,39 @@
           <div class="clock-note">Jam resmi tercatat otomatis mengikuti waktu server (WIB)</div>
         </div>
 
+        <!-- Jejak Progres Absensi Hari Ini (Absen Pintar Anti Salah Pencet) -->
+        <div id="todayProgressCard" class="surface-card progress-strip-card hidden">
+          <div class="progress-strip-head">
+            <span class="schedule-banner-label">Progres Absen Hari Ini</span>
+            <span id="progressNextHint" class="badge badge-masuk">Tahap: Masuk</span>
+          </div>
+          <div class="progress-steps">
+            <div class="progress-step" id="progStepMasuk">
+              <span class="prog-dot">1</span>
+              <div class="prog-meta">
+                <strong>Masuk</strong>
+                <small id="progTimeMasuk">Belum</small>
+              </div>
+            </div>
+            <div class="progress-line"></div>
+            <div class="progress-step" id="progStepIstirahat">
+              <span class="prog-dot">2</span>
+              <div class="prog-meta">
+                <strong>Istirahat</strong>
+                <small id="progTimeIstirahat">Belum</small>
+              </div>
+            </div>
+            <div class="progress-line"></div>
+            <div class="progress-step" id="progStepPulang">
+              <span class="prog-dot">3</span>
+              <div class="prog-meta">
+                <strong>Pulang</strong>
+                <small id="progTimePulang">Belum</small>
+              </div>
+            </div>
+          </div>
+        </div>
+
         <!-- Banner Jadwal Shift Hari Ini (Otomatis dari Roster Admin Only) -->
         <div id="todayScheduleBanner" class="schedule-today-banner hidden">
           <div>
@@ -210,7 +277,7 @@
           </div>
 
           <div id="breakRuleHint" class="info-banner hidden">
-            <strong>Aturan Istirahat:</strong> Shift Pagi &amp; Siang = <b>1 jam</b>, Full Day = <b>1 jam 30 menit</b>. Wajib foto selfie, hitung mundur otomatis dimulai saat submit.
+            <strong>Aturan Istirahat:</strong> Shift Pagi &amp; Siang = <b>1 jam</b>, Full Day = <b>1 jam 30 menit</b>. Wajib foto selfie kamera langsung, hitung mundur otomatis dimulai saat submit.
           </div>
 
           <div class="grid-2">
@@ -233,34 +300,29 @@
             <input type="text" id="absenNama" readonly />
           </div>
 
+          <!-- Kamera Langsung Tanpa Galeri + Auto Marking Time -->
           <div class="form-group">
-            <label>Foto Selfie Wajib (Timestamp Camera / Kamera)</label>
-            <div class="photo-actions">
-              <button type="button" id="btnPickGallery" class="btn btn-outline">
-                <svg class="btn-svg" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><rect x="3" y="3" width="18" height="18" rx="3"/><circle cx="8.5" cy="8.5" r="1.5"/><path d="M21 15l-5-5L5 21"/></svg>
-                <span>Pilih Foto Timestamp</span>
-              </button>
-              <button type="button" id="btnOpenCamera" class="btn btn-blush">
-                <svg class="btn-svg" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M23 19a2 2 0 0 1-2 2H3a2 2 0 0 1-2-2V8a2 2 0 0 1 2-2h4l2-3h6l2 3h4a2 2 0 0 1 2 2z"/><circle cx="12" cy="13" r="4"/></svg>
-                <span>Kamera Langsung</span>
-              </button>
-            </div>
-            <input type="file" id="inputFotoGaleri" accept="image/*" class="hidden" />
+            <label>Foto Selfie Wajib (Kamera Langsung)</label>
+            <button type="button" id="btnOpenCamera" class="btn btn-blush btn-block mb-12">
+              <svg class="btn-svg" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M23 19a2 2 0 0 1-2 2H3a2 2 0 0 1-2-2V8a2 2 0 0 1 2-2h4l2-3h6l2 3h4a2 2 0 0 1 2 2z"/><circle cx="12" cy="13" r="4"/></svg>
+              <span>Ambil Foto Selfie Sekarang</span>
+            </button>
+            <!-- Cadangan kamera bawaan HP bila browser menolak izin kamera live -->
             <input type="file" id="inputFotoKamera" accept="image/*" capture="user" class="hidden" />
 
             <div id="photoPreviewBox" class="photo-preview hidden">
               <img id="photoPreviewImg" alt="Pratinjau foto absensi" />
               <div class="photo-preview-bar">
                 <span id="photoSizeInfo">Foto siap dikirim</span>
-                <button type="button" id="btnRemovePhoto" class="btn-link-danger">Ganti Foto</button>
+                <button type="button" id="btnRemovePhoto" class="btn-link-danger">Foto Ulang</button>
               </div>
             </div>
             <div id="photoEmptyBox" class="photo-empty">
               <div class="photo-empty-icon">
                 <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M23 19a2 2 0 0 1-2 2H3a2 2 0 0 1-2-2V8a2 2 0 0 1 2-2h4l2-3h6l2 3h4a2 2 0 0 1 2 2z"/><circle cx="12" cy="13" r="4"/></svg>
               </div>
-              <strong>Belum ada foto dipilih</strong>
-              <span>Pilih hasil foto dari aplikasi Timestamp Camera atau ambil langsung. Stempel waktu aktual otomatis ditambahkan saat kirim.</span>
+              <strong>Belum ada foto selfie</strong>
+              <span>Tekan tombol di atas untuk mengambil foto langsung dari kamera. Stempel waktu aktual otomatis tertanam di foto.</span>
             </div>
           </div>
 
@@ -391,7 +453,7 @@
         <div id="historyGallery" class="photo-gallery-grid hidden"></div>
       </section>
 
-      <!-- 4. VIEW DASHBOARD LIVE -->
+      <!-- 4. VIEW DASHBOARD & MANAGEMENT MONITORING (LENGKAP TAPI SIMPEL) -->
       <section id="viewDashboard" class="page-view hidden">
         <div class="top-switcher-wrap" id="dashTopSwitcher">
           <div class="segmented-control segmented-pill">
@@ -403,13 +465,19 @@
         <div class="page-title-row">
           <div>
             <h2 id="dashHeadingTitle">Dashboard Hari Ini</h2>
-            <p class="subtitle date-kicker" id="dashDateLabel">-</p>
+            <div class="live-status-row">
+              <span class="subtitle date-kicker" id="dashDateLabel">-</span>
+              <span class="live-dot-pill" id="dashLiveUpdated"><i class="live-pulse-dot"></i> Live</span>
+            </div>
           </div>
           <button type="button" id="btnRefreshDash" class="btn-pill-soft">Muat Ulang</button>
         </div>
 
-        <!-- 5 Kartu KPI dengan Ikon Pastel & Garis Indikator Bawah -->
-        <div class="kpi-grid kpi-grid-5">
+        <!-- Filter Cepat per Outlet -->
+        <div id="dashOutletFilterBar" class="outlet-filter-bar"></div>
+
+        <!-- 6 Kartu KPI Seimbang (2x3 HP / 6 Kolom Laptop) -->
+        <div class="kpi-grid kpi-grid-6">
           <div class="surface-card kpi-card kpi-masuk">
             <div class="kpi-icon-box kpi-icon-mascot">
               <img data-mascot-img alt="" />
@@ -434,6 +502,14 @@
             <strong class="kpi-value text-success" id="kpiPulang">0</strong>
             <div class="kpi-accent-bar"></div>
           </div>
+          <div class="surface-card kpi-card kpi-absen-missing">
+            <div class="kpi-icon-box">
+              <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M16 21v-2a4 4 0 0 0-4-4H5a4 4 0 0 0-4 4v2"/><circle cx="8.5" cy="7" r="4"/><line x1="18" y1="8" x2="23" y2="13"/><line x1="23" y1="8" x2="18" y2="13"/></svg>
+            </div>
+            <span class="kpi-label">Belum Hadir</span>
+            <strong class="kpi-value text-berry" id="kpiBelumHadir">0</strong>
+            <div class="kpi-accent-bar"></div>
+          </div>
           <div class="surface-card kpi-card kpi-belum">
             <div class="kpi-icon-box">
               <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><circle cx="12" cy="12" r="9"/><polyline points="12 7 12 12 15 15"/></svg>
@@ -452,16 +528,75 @@
           </div>
         </div>
 
-        <!-- Pantauan Sedang Istirahat Live -->
-        <div id="dashActiveBreaksCard" class="surface-card info-card hidden">
-          <h3>Sedang / Baru Selesai Istirahat Hari Ini</h3>
-          <div id="dashActiveBreaksList" class="mini-list"></div>
-        </div>
+        <!-- Bar Accordion Aktivitas Live (Ringkas, Ketuk untuk Buka Detail + 1-Klik WA) -->
+        <div class="live-accordions-stack">
+          <!-- 1. Belum Hadir & Izin/Sakit (Otomatis dari Jadwal) -->
+          <div id="accBelumHadirCard" class="surface-card acc-card acc-berry hidden">
+            <button type="button" class="acc-head" data-acc-target="accBelumHadirBody">
+              <div class="acc-head-left">
+                <strong>Belum Hadir / Izin / Sakit</strong>
+                <span class="subtitle" id="accBelumHadirSub">Berdasarkan jadwal shift hari ini</span>
+              </div>
+              <div class="acc-head-right">
+                <span class="num-pill num-pill-berry" id="accBelumHadirCount">0</span>
+                <span class="acc-chevron">&#8250;</span>
+              </div>
+            </button>
+            <div id="accBelumHadirBody" class="acc-body hidden">
+              <div id="dashBelumHadirList" class="mini-list"></div>
+            </div>
+          </div>
 
-        <!-- Belum Absen Pulang -->
-        <div id="belumPulangCard" class="surface-card warning-card hidden">
-          <h3>Belum Absen Pulang</h3>
-          <div id="belumPulangList" class="mini-list"></div>
+          <!-- 2. Sedang / Baru Selesai Istirahat -->
+          <div id="dashActiveBreaksCard" class="surface-card acc-card acc-info hidden">
+            <button type="button" class="acc-head" data-acc-target="accActiveBreaksBody">
+              <div class="acc-head-left">
+                <strong>Sedang / Baru Selesai Istirahat</strong>
+                <span class="subtitle" id="accActiveBreaksSub">Pantauan waktu istirahat live</span>
+              </div>
+              <div class="acc-head-right">
+                <span class="num-pill num-pill-info" id="accActiveBreaksCount">0</span>
+                <span class="acc-chevron">&#8250;</span>
+              </div>
+            </button>
+            <div id="accActiveBreaksBody" class="acc-body hidden">
+              <div id="dashActiveBreaksList" class="mini-list"></div>
+            </div>
+          </div>
+
+          <!-- 3. Belum Absen Pulang -->
+          <div id="belumPulangCard" class="surface-card acc-card acc-warn hidden">
+            <button type="button" class="acc-head" data-acc-target="accBelumPulangBody">
+              <div class="acc-head-left">
+                <strong>Belum Absen Pulang</strong>
+                <span class="subtitle" id="accBelumPulangSub">Hari ini &amp; 3 hari terakhir</span>
+              </div>
+              <div class="acc-head-right">
+                <span class="num-pill num-pill-warn" id="accBelumPulangCount">0</span>
+                <span class="acc-chevron">&#8250;</span>
+              </div>
+            </button>
+            <div id="accBelumPulangBody" class="acc-body hidden">
+              <div id="belumPulangList" class="mini-list"></div>
+            </div>
+          </div>
+
+          <!-- 4. Terlambat Hari Ini -->
+          <div id="accTerlambatCard" class="surface-card acc-card acc-danger hidden">
+            <button type="button" class="acc-head" data-acc-target="accTerlambatBody">
+              <div class="acc-head-left">
+                <strong>Terlambat Hari Ini</strong>
+                <span class="subtitle" id="accTerlambatSub">Melebihi toleransi masuk shift</span>
+              </div>
+              <div class="acc-head-right">
+                <span class="num-pill num-pill-danger" id="accTerlambatCount">0</span>
+                <span class="acc-chevron">&#8250;</span>
+              </div>
+            </button>
+            <div id="accTerlambatBody" class="acc-body hidden">
+              <div id="dashTerlambatList" class="mini-list"></div>
+            </div>
+          </div>
         </div>
 
         <!-- Ringkasan per Cabang Toko -->
@@ -478,7 +613,8 @@
                   <th class="text-center">Masuk</th>
                   <th class="text-center">Istirahat</th>
                   <th class="text-center">Pulang</th>
-                  <th class="text-center">Belum Pulang</th>
+                  <th class="text-center">Blm Hadir</th>
+                  <th class="text-center">Blm Pulang</th>
                   <th class="text-center">Telat</th>
                 </tr>
               </thead>
@@ -505,11 +641,22 @@
           </div>
         </div>
 
-        <!-- Detail Absensi Hari Ini -->
-        <div class="surface-card section-card">
-          <h3>Detail Absensi Hari Ini</h3>
-          <div id="dashTodayList" class="record-list mt-12"></div>
-        </div>
+        <!-- 1 Kartu Tombol Ringkas Detail Absensi Hari Ini (Langsung Buka Tab Riwayat) -->
+        <button type="button" id="btnOpenTodayHistoryCard" class="surface-card today-summary-cta">
+          <div class="today-cta-left">
+            <div class="today-cta-icon">
+              <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8z"/><polyline points="14 2 14 8 20 8"/><line x1="16" y1="13" x2="8" y2="13"/><line x1="16" y1="17" x2="8" y2="17"/></svg>
+            </div>
+            <div>
+              <strong>Detail Absensi &amp; Foto Hari Ini</strong>
+              <span class="subtitle" id="dashTodaySummaryText">0 catatan aktivitas hari ini</span>
+            </div>
+          </div>
+          <div class="today-cta-right">
+            <span class="num-pill num-pill-primary" id="dashTodayCountBadge">0</span>
+            <span class="today-cta-link">Lihat Detail &rsaquo;</span>
+          </div>
+        </button>
       </section>
 
       <!-- 5. VIEW JADWAL SHIFT MINGGUAN & BULANAN PER TOKO -->
@@ -537,10 +684,13 @@
             </select>
           </div>
 
-          <!-- Bar Simpan Khusus Admin Only -->
+          <!-- Bar Aksi Khusus Admin Only (Salin Minggu Lalu + Simpan) -->
           <div id="jadwalAdminBar" class="jadwal-admin-bar admin-only mt-12">
             <span id="jadwalDirtyInfo" class="subtitle">Pilih jadwal pada kotak tanggal, lalu klik Simpan.</span>
-            <button type="button" id="btnSaveJadwal" class="btn btn-primary btn-sm">Simpan Jadwal</button>
+            <div class="jadwal-admin-btns">
+              <button type="button" id="btnCopyPrevWeek" class="btn btn-blush btn-sm">Salin Minggu Lalu</button>
+              <button type="button" id="btnSaveJadwal" class="btn btn-primary btn-sm">Simpan Jadwal</button>
+            </div>
           </div>
         </div>
 
@@ -684,10 +834,30 @@
         </div>
       </section>
 
-      <!-- 7. VIEW KELOLA (KHUSUS ADMIN ONLY — TANPA TEMA & WALLPAPER) -->
+      <!-- 7. VIEW KELOLA (KHUSUS ADMIN ONLY — OUTLET & KARYAWAN TERPADU) -->
       <section id="viewKelola" class="page-view hidden">
         <div class="page-title-row">
           <h2>Kelola MOMOYO</h2>
+        </div>
+
+        <!-- Kelola Outlet & Karyawan Terpadu Per Cabang -->
+        <div class="surface-card section-card">
+          <div class="section-header-row">
+            <div>
+              <h3>Outlet &amp; Daftar Karyawan</h3>
+              <p class="subtitle">Ketuk cabang untuk melihat daftar karyawan, edit ID, profil, PIN, dan setting shift/GPS.</p>
+            </div>
+            <div class="kelola-top-btns">
+              <button type="button" id="btnAddStore" class="btn btn-outline btn-sm">+ Tambah Outlet</button>
+              <button type="button" id="btnAddCrew" class="btn btn-primary btn-sm">+ Tambah Karyawan</button>
+            </div>
+          </div>
+
+          <div class="manage-search-row">
+            <input type="text" id="manageCrewSearch" placeholder="Cari nama karyawan atau ID di semua outlet..." />
+          </div>
+
+          <div id="manageOutletCrewList" class="manage-list mt-12"></div>
         </div>
 
         <!-- Pengaturan Teks Ucapan di Bawah Jam Absen -->
@@ -709,24 +879,6 @@
             </div>
             <button type="submit" class="btn btn-primary btn-block">Simpan Teks Ucapan</button>
           </form>
-        </div>
-
-        <!-- Kelola Karyawan -->
-        <div class="surface-card section-card">
-          <div class="section-header-row">
-            <h3>Daftar Karyawan, Profil &amp; PIN</h3>
-            <button type="button" id="btnAddCrew" class="btn btn-primary btn-sm">+ Tambah Karyawan</button>
-          </div>
-          <div id="manageCrewList" class="manage-list"></div>
-        </div>
-
-        <!-- Kelola Toko -->
-        <div class="surface-card section-card">
-          <div class="section-header-row">
-            <h3>Cabang Toko, Shift &amp; GPS</h3>
-            <button type="button" id="btnAddStore" class="btn btn-primary btn-sm">+ Tambah Toko</button>
-          </div>
-          <div id="manageStoreList" class="manage-list"></div>
         </div>
 
         <!-- Ganti Password Admin Only -->
@@ -755,6 +907,36 @@
   </div>
 
   <!-- ==================== MODALS ==================== -->
+
+  <!-- Modal Kamera Live Anti-Curang (Langsung di Dalam Aplikasi) -->
+  <div id="modalLiveCamera" class="modal-backdrop hidden">
+    <div class="modal-card modal-camera-card">
+      <div class="modal-head">
+        <div>
+          <h3>Kamera Selfie Live</h3>
+          <p class="subtitle" id="liveCamSubInfo">Pastikan wajah terlihat jelas sebelum jepret.</p>
+        </div>
+        <button type="button" class="btn-icon-close" id="btnCloseLiveCamera">&times;</button>
+      </div>
+      <div class="live-cam-stage">
+        <video id="liveCamVideo" autoplay playsinline muted></video>
+        <div class="live-cam-watermark">
+          <strong id="liveCamTitleOverlay">MOMOYO ABSENSI</strong>
+          <span id="liveCamTimeOverlay">--:--:-- WIB</span>
+        </div>
+      </div>
+      <div class="live-cam-controls mt-12">
+        <button type="button" id="btnFlipCamera" class="btn btn-outline btn-sm">Putar Kamera</button>
+        <button type="button" id="btnCaptureLivePhoto" class="btn btn-primary">
+          <svg class="btn-svg" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><circle cx="12" cy="12" r="9"/><circle cx="12" cy="12" r="4" fill="currentColor"/></svg>
+          <span>Jepret Foto</span>
+        </button>
+      </div>
+      <button type="button" id="btnFallbackNativeCam" class="btn-link-muted mt-8">
+        Kamera tidak muncul? Gunakan kamera bawaan HP
+      </button>
+    </div>
+  </div>
 
   <!-- Modal Profil -->
   <div id="modalProfile" class="modal-backdrop hidden">
@@ -796,7 +978,7 @@
       </form>
 
       <p id="crewProfileReadOnlyNote" class="login-note hidden">
-        Anda dapat mengganti foto profil sendiri. Perubahan cabang, area, posisi, dan nomor telepon hanya dapat dilakukan oleh Admin MOMOYO.
+        Anda dapat mengganti foto profil sendiri. Perubahan ID, cabang, area, posisi, dan nomor telepon hanya dapat dilakukan oleh Admin MOMOYO.
       </p>
       <button type="button" id="btnCloseProfileBottom" class="btn btn-outline btn-block mt-12" onclick="closeModal('modalProfile')">Tutup</button>
     </div>
@@ -1009,7 +1191,7 @@
     </div>
   </div>
 
-  <!-- Modal Tambah/Edit Karyawan (Admin Only) -->
+  <!-- Modal Tambah/Edit Karyawan (Admin Only — ID Bisa Diedit Manual) -->
   <div id="modalCrew" class="modal-backdrop hidden">
     <div class="modal-card">
       <div class="modal-head">
@@ -1017,7 +1199,7 @@
         <button type="button" class="btn-icon-close" onclick="closeModal('modalCrew')">&times;</button>
       </div>
       <form id="formCrew" class="stack-form">
-        <input type="hidden" id="crewIdInput" />
+        <input type="hidden" id="crewOriginalIdInput" />
 
         <div class="crew-photo-picker">
           <div class="profile-avatar-md" id="crewPhotoPreview">K</div>
@@ -1026,6 +1208,11 @@
             <button type="button" id="btnClearCrewPhoto" class="btn-link-danger hidden">Hapus Foto</button>
             <input type="file" id="inputCrewPhoto" accept="image/*" class="hidden" />
           </div>
+        </div>
+
+        <div class="form-group">
+          <label for="crewIdInput">ID Karyawan <span class="label-hint">(Bisa diedit sesuai tgl mulai kerja)</span></label>
+          <input type="text" id="crewIdInput" maxlength="32" placeholder="Contoh: 20240501-01 (kosongkan = otomatis)" />
         </div>
 
         <div class="form-group">
@@ -1062,7 +1249,7 @@
           <input type="text" id="crewPosisiCustomInput" maxlength="40" placeholder="Contoh: Trainee, Runner, Kasir..." />
         </div>
         <div class="form-group">
-          <label for="crewTelpInput">Nomor Telepon Aktif</label>
+          <label for="crewTelpInput">Nomor Telepon Aktif (WhatsApp)</label>
           <input type="tel" id="crewTelpInput" placeholder="Contoh: 081234567890" />
         </div>
 
