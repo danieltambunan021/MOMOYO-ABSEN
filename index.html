@@ -3,11 +3,11 @@
 <head>
   <meta charset="UTF-8" />
   <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no, viewport-fit=cover" />
-  <meta name="theme-color" content="#E11D48" />
+  <meta name="theme-color" content="#C81E2B" />
   <meta name="apple-mobile-web-app-capable" content="yes" />
-  <meta name="apple-mobile-web-app-status-bar-style" content="default" />
+  <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent" />
   <meta name="apple-mobile-web-app-title" content="MOMOYO Absen" />
-  <title>MOMOYO Absensi</title>
+  <title>MOMOYO ABSENSI KARYAWAN</title>
   <link rel="manifest" href="manifest.json" />
   <link rel="icon" type="image/svg+xml" href="icon.svg" />
   <link rel="apple-touch-icon" href="icon.svg" />
@@ -17,16 +17,57 @@
   <link rel="stylesheet" href="style.css" />
   <script src="https://cdn.jsdelivr.net/npm/chart.js@4.4.4/dist/chart.umd.min.js" defer></script>
 </head>
-<body data-theme="default">
-  <!-- Layer Wallpaper Responsif (Auto-Portrait HP / Auto-Landscape Laptop) & Dekorasi Tema -->
-  <div id="themeWallpaper" class="theme-wallpaper"></div>
-  <div class="bg-orb orb-1"></div>
-  <div class="bg-orb orb-2"></div>
+<body>
+  <!-- Latar Soft Blush, Sprinkles Pastel & Stiker Maskot Melayang (GPU 60Hz) -->
+  <div class="blush-bg" aria-hidden="true"></div>
+  <div class="sprinkles-layer" aria-hidden="true">
+    <span class="sprinkle sp-1"></span>
+    <span class="sprinkle sp-2"></span>
+    <span class="sprinkle sp-3"></span>
+    <span class="sprinkle sp-4"></span>
+    <span class="sprinkle sp-5"></span>
+    <span class="sprinkle sp-6"></span>
+    <span class="sprinkle sp-7"></span>
+    <span class="sprinkle sp-8"></span>
+    <span class="sprinkle sp-9"></span>
+    <span class="sprinkle sp-10"></span>
+  </div>
+  <div class="mascot-floaters" aria-hidden="true">
+    <div class="mascot-sticker ms-left-top">
+      <img data-mascot-img alt="" />
+    </div>
+    <div class="mascot-sticker ms-right-mid">
+      <img data-mascot-img alt="" />
+    </div>
+    <div class="mascot-sticker ms-left-bot">
+      <img data-mascot-img alt="" />
+    </div>
+  </div>
 
-  <!-- Banner Ucapan Tema Musiman (Global dari Admin Only) -->
-  <div id="themeBanner" class="theme-banner hidden">
-    <span id="themeBannerIcon">✨</span>
-    <span id="themeBannerText"></span>
+  <!-- Bar Atas Merah Efek Lelehan Es Krim (Tampil di Semua Halaman) -->
+  <div class="momoyo-top-wrap">
+    <div class="momoyo-red-bar">
+      <div class="momoyo-bar-inner">
+        <div class="momoyo-bar-brand">
+          <div class="momoyo-bar-logo">
+            <img data-mascot-img alt="MOMOYO" />
+          </div>
+          <span class="momoyo-bar-title">MOMOYO ABSENSI KARYAWAN</span>
+        </div>
+        <span class="momoyo-bar-cheer">SEMANGATT</span>
+      </div>
+    </div>
+    <svg class="icecream-drip-svg" viewBox="0 0 1440 28" preserveAspectRatio="none" aria-hidden="true">
+      <path d="M0,0 L1440,0 L1440,5 C1390,5 1378,19 1362,19 C1346,19 1336,5 1292,5 C1248,5 1236,15 1222,15 C1208,15 1196,5 1126,5 C1078,5 1068,24 1054,24 C1040,24 1030,5 966,5 C910,5 896,17 880,17 C864,17 852,5 776,5 C740,5 728,25 714,25 C700,25 690,5 612,5 C558,5 546,15 532,15 C518,15 508,5 436,5 C392,5 382,22 368,22 C354,22 344,5 268,5 C210,5 198,16 184,16 C170,16 160,5 106,5 C90,5 82,24 68,24 C54,24 44,5 0,5 Z" fill="#C81E2B"/>
+    </svg>
+  </div>
+
+  <!-- Indikator Pull-to-Refresh (Tarik Layar ke Bawah) -->
+  <div id="ptrIndicator" class="ptr-indicator" aria-hidden="true">
+    <div class="ptr-pill">
+      <div class="ptr-spinner"></div>
+      <span id="ptrText">Tarik untuk muat ulang</span>
+    </div>
   </div>
 
   <!-- Banner Install PWA (Android) -->
@@ -36,16 +77,18 @@
       <span>Akses cepat 1 ketukan dari layar utama HP</span>
     </div>
     <div class="install-actions">
-      <button id="btnInstallPwa" class="btn-sm btn-primary">Pasang</button>
+      <button id="btnInstallPwa" class="btn btn-sm btn-white-pill">Pasang</button>
       <button id="btnDismissPwa" class="btn-icon-close" aria-label="Tutup">&times;</button>
     </div>
   </div>
 
   <!-- ==================== LAYAR LOGIN ==================== -->
   <section id="loginView" class="login-screen">
-    <div class="glass-card login-card">
+    <div class="surface-card login-card">
       <div class="brand-header">
-        <div class="brand-badge">M</div>
+        <div class="brand-badge">
+          <img data-mascot-img alt="MOMOYO" />
+        </div>
         <div>
           <h1>MOMOYO</h1>
           <p class="subtitle">Sistem Absensi, Jadwal &amp; Monitoring Outlet</p>
@@ -107,27 +150,29 @@
 
   <!-- ==================== APLIKASI UTAMA ==================== -->
   <div id="appShell" class="app-shell hidden">
-    <!-- Top Header -->
-    <header class="top-header glass-bar">
-      <button type="button" id="btnOpenProfile" class="user-pill user-pill-btn" title="Lihat Profil">
-        <div class="avatar-circle" id="headerAvatar">M</div>
-        <div class="user-meta">
-          <strong id="headerName">Nama</strong>
-          <span id="headerRoleStore">Toko</span>
+    <!-- Strip Profil Bersih di Bawah Bar Lelehan -->
+    <header class="profile-strip">
+      <div class="profile-strip-inner">
+        <button type="button" id="btnOpenProfile" class="user-pill user-pill-btn" title="Lihat Profil">
+          <div class="avatar-circle" id="headerAvatar">M</div>
+          <div class="user-meta">
+            <strong id="headerName">Nama</strong>
+            <span id="headerRoleStore">Toko</span>
+          </div>
+        </button>
+        <div class="header-right">
+          <span id="offlineBadge" class="badge badge-danger hidden">Offline</span>
+          <button id="btnLogout" class="btn-pill-soft" type="button">Keluar</button>
         </div>
-      </button>
-      <div class="header-right">
-        <span id="offlineBadge" class="badge badge-danger hidden">Offline</span>
-        <button id="btnLogout" class="btn-ghost-sm" type="button">Keluar</button>
       </div>
     </header>
 
     <!-- Konten Utama -->
-    <main class="main-content">
+    <main class="main-content" id="mainScrollArea">
 
       <!-- 1. VIEW ABSENSI (KARYAWAN & ADMIN ONLY) -->
       <section id="viewAbsen" class="page-view hidden">
-        <div class="glass-card hero-clock-card">
+        <div class="surface-card hero-clock-card">
           <div class="clock-date" id="liveDate">Memuat tanggal...</div>
           <div class="clock-time" id="liveClock">--:--:--</div>
           <div class="clock-greeting" id="absenGreetingText">SELAMAT BEKERJA</div>
@@ -144,7 +189,7 @@
         </div>
 
         <!-- Countdown Istirahat Pribadi -->
-        <div id="myBreakCountdownCard" class="glass-card break-countdown-card hidden">
+        <div id="myBreakCountdownCard" class="surface-card break-countdown-card hidden">
           <div class="break-cd-top">
             <span class="badge badge-warning">SEDANG ISTIRAHAT</span>
             <span id="myBreakEndLabel" class="record-sub">Selesai --:--:--</span>
@@ -153,7 +198,7 @@
           <p class="subtitle" id="myBreakSubInfo">Waktu istirahat berjalan otomatis dari jam submit.</p>
         </div>
 
-        <form id="formAbsen" class="glass-card absen-form-card">
+        <form id="formAbsen" class="surface-card absen-form-card">
           <div class="form-group">
             <label>Jenis Absensi</label>
             <div class="segmented-control segmented-3">
@@ -192,10 +237,12 @@
             <label>Foto Selfie Wajib (Timestamp Camera / Kamera)</label>
             <div class="photo-actions">
               <button type="button" id="btnPickGallery" class="btn btn-outline">
-                Pilih Foto Timestamp
+                <svg class="btn-svg" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><rect x="3" y="3" width="18" height="18" rx="3"/><circle cx="8.5" cy="8.5" r="1.5"/><path d="M21 15l-5-5L5 21"/></svg>
+                <span>Pilih Foto Timestamp</span>
               </button>
-              <button type="button" id="btnOpenCamera" class="btn btn-soft">
-                Kamera Langsung
+              <button type="button" id="btnOpenCamera" class="btn btn-blush">
+                <svg class="btn-svg" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M23 19a2 2 0 0 1-2 2H3a2 2 0 0 1-2-2V8a2 2 0 0 1 2-2h4l2-3h6l2 3h4a2 2 0 0 1 2 2z"/><circle cx="12" cy="13" r="4"/></svg>
+                <span>Kamera Langsung</span>
               </button>
             </div>
             <input type="file" id="inputFotoGaleri" accept="image/*" class="hidden" />
@@ -209,7 +256,11 @@
               </div>
             </div>
             <div id="photoEmptyBox" class="photo-empty">
-              Belum ada foto dipilih. Pilih hasil foto dari aplikasi Timestamp Camera atau ambil langsung.
+              <div class="photo-empty-icon">
+                <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M23 19a2 2 0 0 1-2 2H3a2 2 0 0 1-2-2V8a2 2 0 0 1 2-2h4l2-3h6l2 3h4a2 2 0 0 1 2 2z"/><circle cx="12" cy="13" r="4"/></svg>
+              </div>
+              <strong>Belum ada foto dipilih</strong>
+              <span>Pilih hasil foto dari aplikasi Timestamp Camera atau ambil langsung. Stempel waktu aktual otomatis ditambahkan saat kirim.</span>
             </div>
           </div>
 
@@ -228,10 +279,10 @@
         </form>
 
         <!-- Status Istirahat Rekan Satu Toko (Terisolasi Per Toko) -->
-        <div id="storeBreaksCard" class="glass-card section-card mt-12 hidden">
+        <div id="storeBreaksCard" class="surface-card section-card mt-12 hidden">
           <div class="section-header-row">
             <h3>Status Istirahat — <span id="storeBreaksTitle">Outlet</span></h3>
-            <button type="button" id="btnRefreshStoreBreaks" class="btn-ghost-sm">Segarkan</button>
+            <button type="button" id="btnRefreshStoreBreaks" class="btn-pill-soft">Segarkan</button>
           </div>
           <div id="storeBreaksList" class="mini-list"></div>
         </div>
@@ -241,14 +292,14 @@
       <section id="viewKalenderSaya" class="page-view hidden">
         <div class="page-title-row">
           <h2>Kalender Absensi &amp; Jadwal</h2>
-          <button type="button" id="btnRefreshMyCalendar" class="btn-ghost-sm">Muat Ulang</button>
+          <button type="button" id="btnRefreshMyCalendar" class="btn-pill-soft">Muat Ulang</button>
         </div>
 
-        <div class="glass-card cal-card">
+        <div class="surface-card cal-card">
           <div class="cal-header">
-            <button type="button" id="btnCalPrev" class="btn-ghost-sm" aria-label="Bulan sebelumnya">&larr;</button>
+            <button type="button" id="btnCalPrev" class="btn-pill-soft" aria-label="Bulan sebelumnya">&larr;</button>
             <strong id="calMonthLabel">NOVEMBER 2026</strong>
-            <button type="button" id="btnCalNext" class="btn-ghost-sm" aria-label="Bulan berikutnya">&rarr;</button>
+            <button type="button" id="btnCalNext" class="btn-pill-soft" aria-label="Bulan berikutnya">&rarr;</button>
           </div>
 
           <div class="cal-summary-row">
@@ -283,7 +334,7 @@
           </div>
         </div>
 
-        <div id="crewDayDetailCard" class="glass-card section-card mt-12">
+        <div id="crewDayDetailCard" class="surface-card section-card mt-12">
           <h3 id="crewDayDetailTitle">Pilih tanggal di kalender</h3>
           <div id="crewDayDetailBody" class="mt-8">
             <p class="subtitle">Ketuk salah satu tanggal untuk melihat jadwal, jam masuk, istirahat, pulang, dan bukti foto.</p>
@@ -291,17 +342,17 @@
         </div>
       </section>
 
-      <!-- 3. VIEW RIWAYAT & GALERI FOTO (ADMIN ONLY = EDITABLE, MONITORING/KARYAWAN = READ-ONLY) -->
+      <!-- 3. VIEW RIWAYAT & GALERI FOTO -->
       <section id="viewRiwayat" class="page-view hidden">
         <div class="page-title-row">
           <div>
             <h2>Riwayat &amp; Bukti Foto</h2>
             <p class="subtitle" id="riwayatModeSub">Semua cabang outlet</p>
           </div>
-          <button type="button" id="btnRefreshHistory" class="btn-ghost-sm">Muat Ulang</button>
+          <button type="button" id="btnRefreshHistory" class="btn-pill-soft">Muat Ulang</button>
         </div>
 
-        <div class="glass-card filter-card">
+        <div class="surface-card filter-card">
           <div class="filter-grid filter-grid-6">
             <input type="text" id="filterSearch" placeholder="Cari nama karyawan..." />
             <select id="filterToko">
@@ -340,71 +391,95 @@
         <div id="historyGallery" class="photo-gallery-grid hidden"></div>
       </section>
 
-      <!-- 4. VIEW DASHBOARD LIVE (ADMIN ONLY & MANAGEMENT MONITORING / KARYAWAN READ-ONLY) -->
+      <!-- 4. VIEW DASHBOARD LIVE -->
       <section id="viewDashboard" class="page-view hidden">
-        <!-- Switcher Cepat Dashboard vs Insight -->
-        <div class="segmented-control mb-12" id="dashTopSwitcher">
-          <button type="button" class="seg-btn active" data-switch-view="viewDashboard">Live Hari Ini</button>
-          <button type="button" class="seg-btn" data-switch-view="viewInsight" id="btnSwitchToInsight">Insight &amp; Rekap</button>
+        <div class="top-switcher-wrap" id="dashTopSwitcher">
+          <div class="segmented-control segmented-pill">
+            <button type="button" class="seg-btn active" data-switch-view="viewDashboard">Live Hari Ini</button>
+            <button type="button" class="seg-btn" data-switch-view="viewInsight" id="btnSwitchToInsight">Insight &amp; Rekap</button>
+          </div>
         </div>
 
         <div class="page-title-row">
           <div>
             <h2 id="dashHeadingTitle">Dashboard Hari Ini</h2>
-            <p class="subtitle" id="dashDateLabel">-</p>
+            <p class="subtitle date-kicker" id="dashDateLabel">-</p>
           </div>
-          <button type="button" id="btnRefreshDash" class="btn-ghost-sm">Muat Ulang</button>
+          <button type="button" id="btnRefreshDash" class="btn-pill-soft">Muat Ulang</button>
         </div>
 
+        <!-- 5 Kartu KPI dengan Ikon Pastel & Garis Indikator Bawah -->
         <div class="kpi-grid kpi-grid-5">
-          <div class="glass-card kpi-card">
+          <div class="surface-card kpi-card kpi-masuk">
+            <div class="kpi-icon-box kpi-icon-mascot">
+              <img data-mascot-img alt="" />
+            </div>
             <span class="kpi-label">Masuk</span>
             <strong class="kpi-value text-primary" id="kpiMasuk">0</strong>
+            <div class="kpi-accent-bar"></div>
           </div>
-          <div class="glass-card kpi-card">
+          <div class="surface-card kpi-card kpi-istirahat">
+            <div class="kpi-icon-box">
+              <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M18 8h1a4 4 0 0 1 0 8h-1"/><path d="M2 8h16v9a4 4 0 0 1-4 4H6a4 4 0 0 1-4-4V8z"/><line x1="6" y1="1" x2="6" y2="4"/><line x1="10" y1="1" x2="10" y2="4"/><line x1="14" y1="1" x2="14" y2="4"/></svg>
+            </div>
             <span class="kpi-label">Istirahat</span>
             <strong class="kpi-value text-info" id="kpiIstirahat">0</strong>
+            <div class="kpi-accent-bar"></div>
           </div>
-          <div class="glass-card kpi-card">
+          <div class="surface-card kpi-card kpi-pulang">
+            <div class="kpi-icon-box">
+              <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M9 21H5a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2h4"/><polyline points="16 17 21 12 16 7"/><line x1="21" y1="12" x2="9" y2="12"/></svg>
+            </div>
             <span class="kpi-label">Pulang</span>
             <strong class="kpi-value text-success" id="kpiPulang">0</strong>
+            <div class="kpi-accent-bar"></div>
           </div>
-          <div class="glass-card kpi-card">
+          <div class="surface-card kpi-card kpi-belum">
+            <div class="kpi-icon-box">
+              <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><circle cx="12" cy="12" r="9"/><polyline points="12 7 12 12 15 15"/></svg>
+            </div>
             <span class="kpi-label">Belum Pulang</span>
             <strong class="kpi-value text-warning" id="kpiBelumPulang">0</strong>
+            <div class="kpi-accent-bar"></div>
           </div>
-          <div class="glass-card kpi-card">
+          <div class="surface-card kpi-card kpi-telat">
+            <div class="kpi-icon-box">
+              <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M10.29 3.86L1.82 18a2 2 0 0 0 1.71 3h16.94a2 2 0 0 0 1.71-3L13.71 3.86a2 2 0 0 0-3.42 0z"/><line x1="12" y1="9" x2="12" y2="13"/><line x1="12" y1="17" x2="12.01" y2="17"/></svg>
+            </div>
             <span class="kpi-label">Terlambat</span>
             <strong class="kpi-value text-danger" id="kpiTelat">0</strong>
+            <div class="kpi-accent-bar"></div>
           </div>
         </div>
 
         <!-- Pantauan Sedang Istirahat Live -->
-        <div id="dashActiveBreaksCard" class="glass-card info-card hidden">
+        <div id="dashActiveBreaksCard" class="surface-card info-card hidden">
           <h3>Sedang / Baru Selesai Istirahat Hari Ini</h3>
           <div id="dashActiveBreaksList" class="mini-list"></div>
         </div>
 
-        <div id="belumPulangCard" class="glass-card warning-card hidden">
+        <!-- Belum Absen Pulang -->
+        <div id="belumPulangCard" class="surface-card warning-card hidden">
           <h3>Belum Absen Pulang</h3>
           <div id="belumPulangList" class="mini-list"></div>
         </div>
 
-        <div class="glass-card section-card">
+        <!-- Ringkasan per Cabang Toko -->
+        <div class="surface-card section-card">
           <div class="section-header-row">
             <h3>Ringkasan per Cabang Toko</h3>
             <span class="click-hint">Ketuk toko untuk detail &amp; kalender karyawan</span>
           </div>
           <div class="table-wrap">
-            <table class="data-table">
+            <table class="data-table card-rows-table">
               <thead>
                 <tr>
                   <th>Toko</th>
-                  <th>Masuk</th>
-                  <th>Istirahat</th>
-                  <th>Pulang</th>
-                  <th>Belum Pulang</th>
-                  <th>Telat</th>
+                  <th class="text-center">Masuk</th>
+                  <th class="text-center">Istirahat</th>
+                  <th class="text-center">Pulang</th>
+                  <th class="text-center">Belum Pulang</th>
+                  <th class="text-center">Telat</th>
                 </tr>
               </thead>
               <tbody id="dashStoreTable"></tbody>
@@ -412,23 +487,28 @@
           </div>
         </div>
 
+        <!-- Grafik 3D -->
         <div class="chart-grid">
-          <div class="glass-card section-card">
+          <div class="surface-card section-card">
             <div class="section-header-row">
               <h3>Grafik Hari Ini per Toko</h3>
               <span class="click-hint">Ketuk bar toko</span>
             </div>
             <div class="chart-box"><canvas id="chartPerStore"></canvas></div>
           </div>
-          <div class="glass-card section-card">
-            <h3>Tren 7 Hari Terakhir</h3>
+          <div class="surface-card section-card">
+            <div class="section-header-row">
+              <h3>Tren 7 Hari Terakhir</h3>
+              <span class="click-hint">Masuk &amp; Pulang</span>
+            </div>
             <div class="chart-box"><canvas id="chart7Days"></canvas></div>
           </div>
         </div>
 
-        <div class="glass-card section-card">
+        <!-- Detail Absensi Hari Ini -->
+        <div class="surface-card section-card">
           <h3>Detail Absensi Hari Ini</h3>
-          <div id="dashTodayList" class="record-list"></div>
+          <div id="dashTodayList" class="record-list mt-12"></div>
         </div>
       </section>
 
@@ -439,10 +519,10 @@
             <h2>Jadwal Shift per Toko</h2>
             <p class="subtitle" id="jadwalModeSubtitle">Roster mingguan &amp; bulanan sesuai kalender aktual</p>
           </div>
-          <button type="button" id="btnReloadJadwal" class="btn-ghost-sm">Muat Ulang</button>
+          <button type="button" id="btnReloadJadwal" class="btn-pill-soft">Muat Ulang</button>
         </div>
 
-        <div class="glass-card filter-card">
+        <div class="surface-card filter-card">
           <div class="jadwal-filter-grid">
             <select id="jadwalTokoSelect" title="Pilih Toko"></select>
             <select id="jadwalMonthSelect" title="Pilih Bulan"></select>
@@ -464,7 +544,7 @@
           </div>
         </div>
 
-        <div class="glass-card section-card">
+        <div class="surface-card section-card">
           <div class="jadwal-legend">
             <span class="sched-tag st-pagi">PAGI</span>
             <span class="sched-tag st-siang">SIANG</span>
@@ -481,38 +561,53 @@
 
       <!-- 6. VIEW INSIGHT & REKAP BULANAN -->
       <section id="viewInsight" class="page-view hidden">
-        <!-- Switcher Cepat Dashboard vs Insight -->
-        <div class="segmented-control mb-12" id="insightTopSwitcher">
-          <button type="button" class="seg-btn" data-switch-view="viewDashboard">Live Hari Ini</button>
-          <button type="button" class="seg-btn active" data-switch-view="viewInsight">Insight &amp; Rekap</button>
+        <div class="top-switcher-wrap" id="insightTopSwitcher">
+          <div class="segmented-control segmented-pill">
+            <button type="button" class="seg-btn" data-switch-view="viewDashboard">Live Hari Ini</button>
+            <button type="button" class="seg-btn active" data-switch-view="viewInsight">Insight &amp; Rekap</button>
+          </div>
         </div>
 
         <div class="page-title-row">
-          <h2 id="insightPageTitle">Insight &amp; Rekap</h2>
+          <h2 id="insightPageTitle">Insight &amp; Rekap Gaji</h2>
         </div>
 
-        <div class="glass-card section-card">
-          <div class="segmented-control" id="insightPeriodToggle">
+        <div class="surface-card section-card">
+          <div class="segmented-control segmented-pill" id="insightPeriodToggle">
             <button type="button" class="seg-btn active" data-period="week">Minggu Ini vs Lalu</button>
             <button type="button" class="seg-btn" data-period="month">Bulan Ini vs Lalu</button>
           </div>
           <p class="subtitle mt-8" id="insightPeriodDesc">Memuat perbandingan...</p>
 
-          <div class="kpi-grid mt-12">
-            <div class="mini-kpi">
+          <div class="insight-kpi-grid mt-12">
+            <div class="insight-kpi-card ins-jam">
+              <div class="kpi-icon-box">
+                <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><circle cx="12" cy="12" r="9"/><polyline points="12 7 12 12 15 15"/></svg>
+              </div>
               <span class="kpi-label">Total Jam Kerja</span>
-              <strong id="insJam">0 j</strong>
-              <small id="insJamDiff">-</small>
+              <strong class="ins-val text-info" id="insJam">0 jam</strong>
+              <small class="ins-diff-pill" id="insJamDiff">-</small>
             </div>
-            <div class="mini-kpi">
+
+            <div class="insight-kpi-card ins-hadir">
+              <div class="ins-card-top">
+                <div class="kpi-icon-box">
+                  <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><rect x="3" y="4" width="18" height="18" rx="3"/><line x1="16" y1="2" x2="16" y2="6"/><line x1="8" y1="2" x2="8" y2="6"/><path d="M9 14l2 2 4-4"/></svg>
+                </div>
+                <div class="ins-mini-mascot"><img data-mascot-img alt="" /></div>
+              </div>
               <span class="kpi-label">Total Hari Hadir</span>
-              <strong id="insHadir">0</strong>
-              <small id="insHadirDiff">-</small>
+              <strong class="ins-val text-success" id="insHadir">0 hari</strong>
+              <small class="ins-diff-pill diff-pos" id="insHadirDiff">-</small>
             </div>
-            <div class="mini-kpi">
+
+            <div class="insight-kpi-card ins-telat">
+              <div class="kpi-icon-box">
+                <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M10.29 3.86L1.82 18a2 2 0 0 0 1.71 3h16.94a2 2 0 0 0 1.71-3L13.71 3.86a2 2 0 0 0-3.42 0z"/><line x1="12" y1="9" x2="12" y2="13"/><line x1="12" y1="17" x2="12.01" y2="17"/></svg>
+              </div>
               <span class="kpi-label">Total Keterlambatan</span>
-              <strong id="insTelat">0</strong>
-              <small id="insTelatDiff">-</small>
+              <strong class="ins-val text-danger" id="insTelat">0x</strong>
+              <small class="ins-diff-pill diff-neg" id="insTelatDiff">-</small>
             </div>
           </div>
 
@@ -521,7 +616,7 @@
             <span class="click-hint">Ketuk toko untuk detail karyawan</span>
           </div>
           <div class="table-wrap">
-            <table class="data-table">
+            <table class="data-table card-rows-table">
               <thead>
                 <tr>
                   <th>Toko</th>
@@ -536,7 +631,7 @@
 
           <h3 class="mt-16">Perbandingan per Karyawan</h3>
           <div class="table-wrap">
-            <table class="data-table">
+            <table class="data-table card-rows-table">
               <thead>
                 <tr>
                   <th>Nama</th>
@@ -552,7 +647,7 @@
         </div>
 
         <!-- Ekspor Rekap Gaji — Dikunci Khusus Admin Only -->
-        <div class="glass-card section-card admin-only">
+        <div class="surface-card section-card admin-only">
           <h3>Ekspor Rekap Bulanan (Keperluan Gaji)</h3>
           <div class="recap-controls">
             <select id="recapMonth"></select>
@@ -574,19 +669,29 @@
                 </tr>
               </thead>
               <tbody id="recapTableBody">
-                <tr><td colspan="7" class="text-center">Pilih bulan lalu klik Tampilkan.</td></tr>
+                <tr>
+                  <td colspan="7" class="recap-empty-cell">
+                    <div class="mascot-empty-box">
+                      <div class="mascot-empty-circle"><img data-mascot-img alt="" /></div>
+                      <strong>Pilih bulan lalu klik Tampilkan.</strong>
+                      <span>Rekap gaji akan muncul di sini.</span>
+                    </div>
+                  </td>
+                </tr>
               </tbody>
             </table>
           </div>
         </div>
       </section>
 
-      <!-- 7. VIEW KELOLA (KHUSUS ADMIN ONLY) -->
+      <!-- 7. VIEW KELOLA (KHUSUS ADMIN ONLY — TANPA TEMA & WALLPAPER) -->
       <section id="viewKelola" class="page-view hidden">
-        <h2>Kelola MOMOYO</h2>
+        <div class="page-title-row">
+          <h2>Kelola MOMOYO</h2>
+        </div>
 
         <!-- Pengaturan Teks Ucapan di Bawah Jam Absen -->
-        <div class="glass-card section-card">
+        <div class="surface-card section-card">
           <h3>Teks Ucapan Layar Absensi</h3>
           <p class="subtitle mt-8">Tampil otomatis di bawah jam saat karyawan memilih Masuk, Istirahat, atau Pulang.</p>
           <form id="formAbsenGreetings" class="stack-form mt-12">
@@ -606,76 +711,8 @@
           </form>
         </div>
 
-        <!-- Pengaturan Tema & Wallpaper Responsif (Auto-Portrait HP & Auto-Landscape Laptop) -->
-        <div class="glass-card section-card">
-          <h3>Tema &amp; Wallpaper Aplikasi</h3>
-          <p class="subtitle mt-8">Perubahan tema &amp; wallpaper langsung berlaku untuk semua perangkat (otomatis Portrait di HP &amp; Landscape di Laptop).</p>
-
-          <div class="theme-grid mt-12" id="themePresetGrid">
-            <button type="button" class="theme-chip active" data-theme-preset="default">
-              <span class="swatch swatch-default"></span>
-              <span>Default MOMOYO</span>
-            </button>
-            <button type="button" class="theme-chip" data-theme-preset="lebaran">
-              <span class="swatch swatch-lebaran"></span>
-              <span>Ramadhan / Lebaran</span>
-            </button>
-            <button type="button" class="theme-chip" data-theme-preset="natal">
-              <span class="swatch swatch-natal"></span>
-              <span>Natal</span>
-            </button>
-            <button type="button" class="theme-chip" data-theme-preset="imlek">
-              <span class="swatch swatch-imlek"></span>
-              <span>Imlek / Tahun Baru</span>
-            </button>
-            <button type="button" class="theme-chip" data-theme-preset="merdeka">
-              <span class="swatch swatch-merdeka"></span>
-              <span>17 Agustus</span>
-            </button>
-            <button type="button" class="theme-chip" data-theme-preset="custom">
-              <span class="swatch swatch-custom"></span>
-              <span>Wallpaper Custom</span>
-            </button>
-          </div>
-
-          <div class="form-group mt-12">
-            <label for="themeBannerInput">Teks Ucapan di Atas Layar (Opsional)</label>
-            <input type="text" id="themeBannerInput" maxlength="90" placeholder="Contoh: Marhaban ya Ramadhan — Semangat Tim MOMOYO!" />
-          </div>
-
-          <div class="wallpaper-slots-grid">
-            <!-- Slot HP Portrait -->
-            <div class="wallpaper-slot-card">
-              <label class="field-label">Wallpaper HP (Auto-Portrait)</label>
-              <div class="photo-actions">
-                <button type="button" id="btnPickWallpaperMobile" class="btn btn-outline btn-sm">Pilih HP</button>
-                <button type="button" id="btnClearWallpaperMobile" class="btn btn-soft btn-sm">Hapus</button>
-              </div>
-              <input type="file" id="inputWallpaperMobile" accept="image/*" class="hidden" />
-              <div id="wallpaperMobilePreviewBox" class="wallpaper-preview preview-portrait hidden">
-                <img id="wallpaperMobilePreviewImg" alt="Pratinjau wallpaper HP" />
-              </div>
-            </div>
-
-            <!-- Slot Laptop Landscape -->
-            <div class="wallpaper-slot-card">
-              <label class="field-label">Wallpaper Laptop (Auto-Landscape)</label>
-              <div class="photo-actions">
-                <button type="button" id="btnPickWallpaperDesktop" class="btn btn-outline btn-sm">Pilih Laptop</button>
-                <button type="button" id="btnClearWallpaperDesktop" class="btn btn-soft btn-sm">Hapus</button>
-              </div>
-              <input type="file" id="inputWallpaperDesktop" accept="image/*" class="hidden" />
-              <div id="wallpaperDesktopPreviewBox" class="wallpaper-preview preview-landscape hidden">
-                <img id="wallpaperDesktopPreviewImg" alt="Pratinjau wallpaper Laptop" />
-              </div>
-            </div>
-          </div>
-
-          <button type="button" id="btnSaveTheme" class="btn btn-primary btn-block mt-12">Terapkan Tema &amp; Wallpaper</button>
-        </div>
-
         <!-- Kelola Karyawan -->
-        <div class="glass-card section-card">
+        <div class="surface-card section-card">
           <div class="section-header-row">
             <h3>Daftar Karyawan, Profil &amp; PIN</h3>
             <button type="button" id="btnAddCrew" class="btn btn-primary btn-sm">+ Tambah Karyawan</button>
@@ -684,7 +721,7 @@
         </div>
 
         <!-- Kelola Toko -->
-        <div class="glass-card section-card">
+        <div class="surface-card section-card">
           <div class="section-header-row">
             <h3>Cabang Toko, Shift &amp; GPS</h3>
             <button type="button" id="btnAddStore" class="btn btn-primary btn-sm">+ Tambah Toko</button>
@@ -693,7 +730,7 @@
         </div>
 
         <!-- Ganti Password Admin Only -->
-        <div class="glass-card section-card">
+        <div class="surface-card section-card">
           <h3>Ganti Password Admin Only</h3>
           <form id="formChangeAdminPass" class="stack-form">
             <div class="form-group">
@@ -711,13 +748,15 @@
 
     </main>
 
-    <!-- Bottom Navigation -->
-    <nav id="bottomNav" class="bottom-nav glass-bar"></nav>
+    <!-- Floating Pill Bottom Navigation -->
+    <div class="bottom-nav-wrap">
+      <nav id="bottomNav" class="bottom-nav"></nav>
+    </div>
   </div>
 
   <!-- ==================== MODALS ==================== -->
 
-  <!-- Modal Profil (Admin Only = Edit Lengkap + Foto Crop, Karyawan = Ganti Foto Crop Saja) -->
+  <!-- Modal Profil -->
   <div id="modalProfile" class="modal-backdrop hidden">
     <div class="modal-card">
       <div class="modal-head">
@@ -730,19 +769,16 @@
         <span class="subtitle" id="profileSubLg">Role</span>
       </div>
 
-      <!-- Tombol Ganti / Hapus Foto (Admin Only & Karyawan) -->
       <div id="profilePhotoActionsBox" class="mt-8">
         <div class="photo-actions">
           <button type="button" id="btnPickMyPhoto" class="btn btn-outline btn-sm">Ganti Foto Profil</button>
-          <button type="button" id="btnClearMyPhoto" class="btn btn-soft btn-sm">Hapus Foto</button>
+          <button type="button" id="btnClearMyPhoto" class="btn btn-blush btn-sm">Hapus Foto</button>
         </div>
         <input type="file" id="inputMyPhoto" accept="image/*" class="hidden" />
       </div>
 
-      <!-- Detail Read-Only (Karyawan) -->
       <div id="profileDetails" class="detail-grid"></div>
 
-      <!-- Form Edit Profil Lengkap (Khusus Admin Only) -->
       <form id="formAdminProfile" class="stack-form mt-12 hidden">
         <div class="form-group">
           <label for="adminProfNama">Nama Admin</label>
@@ -766,7 +802,7 @@
     </div>
   </div>
 
-  <!-- Modal Crop & Zoom Foto Profil (Ala Media Sosial) -->
+  <!-- Modal Crop & Zoom Foto Profil -->
   <div id="modalCropPhoto" class="modal-backdrop hidden">
     <div class="modal-card">
       <div class="modal-head">
@@ -792,7 +828,7 @@
     </div>
   </div>
 
-  <!-- Modal Detail Karyawan per Toko (Saat Bar/Baris Toko Diklik) -->
+  <!-- Modal Detail Karyawan per Toko -->
   <div id="modalStoreDetail" class="modal-backdrop hidden">
     <div class="modal-card modal-card-lg">
       <div class="modal-head">
@@ -811,7 +847,7 @@
     </div>
   </div>
 
-  <!-- Modal DETAILS: Kalender 1 Bulan Karyawan (Dari Tombol DETAILS di Detail Toko) -->
+  <!-- Modal DETAILS: Kalender 1 Bulan Karyawan -->
   <div id="modalCrewCalendar" class="modal-backdrop hidden">
     <div class="modal-card modal-card-lg">
       <div class="modal-head">
@@ -823,9 +859,9 @@
       </div>
 
       <div class="cal-header">
-        <button type="button" id="btnAdminCalPrev" class="btn-ghost-sm">&larr;</button>
+        <button type="button" id="btnAdminCalPrev" class="btn-pill-soft">&larr;</button>
         <strong id="adminCalMonthLabel">NOVEMBER 2026</strong>
-        <button type="button" id="btnAdminCalNext" class="btn-ghost-sm">&rarr;</button>
+        <button type="button" id="btnAdminCalNext" class="btn-pill-soft">&rarr;</button>
       </div>
 
       <div class="cal-summary-row">
@@ -868,7 +904,7 @@
     </div>
   </div>
 
-  <!-- Modal Status Jadwal Lainnya (Khusus Admin Only) -->
+  <!-- Modal Status Jadwal Lainnya (Admin Only) -->
   <div id="modalJadwalBko" class="modal-backdrop hidden">
     <div class="modal-card">
       <div class="modal-head">
@@ -897,7 +933,7 @@
     </div>
   </div>
 
-  <!-- Modal Pratinjau Foto -->
+  <!-- Modal Pratinjau Foto + Keterangan Waktu Aktual -->
   <div id="modalPhoto" class="modal-backdrop hidden">
     <div class="modal-card">
       <div class="modal-head">
@@ -905,6 +941,7 @@
         <button type="button" class="btn-icon-close" onclick="closeModal('modalPhoto')">&times;</button>
       </div>
       <img id="modalPhotoImg" class="modal-img" alt="Foto Absensi" />
+      <div id="modalPhotoMeta" class="photo-meta-bar hidden"></div>
       <a id="modalPhotoLink" href="#" target="_blank" rel="noopener" class="btn btn-outline btn-block mt-12">Buka di Google Drive</a>
     </div>
   </div>
@@ -1033,7 +1070,7 @@
           <label for="crewCurrentPinDisplay">Current Password / PIN Saat Ini</label>
           <div class="input-with-btn">
             <input type="password" id="crewCurrentPinDisplay" readonly placeholder="Belum tercatat" />
-            <button type="button" id="btnToggleCurrentPin" class="btn-ghost-sm">Lihat</button>
+            <button type="button" id="btnToggleCurrentPin" class="btn-pill-soft">Lihat</button>
           </div>
         </div>
 
@@ -1118,7 +1155,7 @@
               <input type="number" id="storeRadius" value="100" min="20" max="2000" />
             </div>
             <div class="form-group flex-end">
-              <button type="button" id="btnGetCurrentGps" class="btn btn-soft btn-sm btn-block">Ambil GPS Sekarang</button>
+              <button type="button" id="btnGetCurrentGps" class="btn btn-blush btn-sm btn-block">Ambil GPS Sekarang</button>
             </div>
           </div>
         </div>
