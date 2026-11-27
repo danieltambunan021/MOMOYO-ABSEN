@@ -1,11 +1,11 @@
-const CACHE_NAME = 'momoyo-absen-v6';
+const CACHE_NAME = 'momoyo-absen-v7';
 const APP_ASSETS = [
   './',
   './index.html',
   './style.css',
   './app.js',
   './manifest.json',
-  './icon.svg'
+  './mascot.png'
 ];
 
 self.addEventListener('install', (event) => {
