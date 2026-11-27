@@ -1,12 +1,12 @@
 /**
  * ============================================================
- * MOMOYO ABSENSI — FRONTEND APPLICATION v3.1 (PWA)
+ * MOMOYO ABSENSI KARYAWAN — FRONTEND APPLICATION v4.0 (PWA)
  * ============================================================
- * - Shift baku: Pagi, Siang, Full Day (tanpa Shift Utama di data karyawan).
- * - Posisi: Supervisor, Kepala Toko, Kepala Bakery, Crew Minuman, Crew Bakery, + Tambah Lainnya.
- * - Wallpaper responsif: slot terpisah HP (Auto-Portrait) & Laptop (Auto-Landscape).
- * - Istilah: Karyawan, Admin Only, Management Monitoring.
- * - Status Jadwal: Pagi, Siang, Full Day, Izin, Sakit, + Lainnya (khusus Admin Only).
+ * - Desain seragam Soft Blush Es Krim (HP & Laptop) tanpa fitur Tema/Wallpaper.
+ * - Pull-to-Refresh 60Hz (requestAnimationFrame + passive touch).
+ * - Grafik 3D glossy (Batang per Toko & Kurva Tren 7 Hari).
+ * - Watermark waktu aktual (Foto & Submit) tertanam otomatis di foto selfie.
+ * - Kompatibel penuh dengan Backend Code.gs v3.1.
  */
 const API_URL = 'https://script.google.com/macros/s/AKfycbyrbl6vBqA1uatZYi2kEn6gv5AxwrB4LEnmEIwh5NW0DwCowh0so6uZOIbzV3F8wVeg/exec';
 
@@ -34,19 +34,42 @@ const JADWAL_PRESET_OPTIONS = [
   { val: '__CUSTOM__', label: '+ Lainnya...' }
 ];
 
-const THEME_META = {
-  default: { color: '#E11D48', icon: '✨' },
-  lebaran: { color: '#047857', icon: '🌙' },
-  natal: { color: '#B91C1C', icon: '🎄' },
-  imlek: { color: '#B91C1C', icon: '🏮' },
-  merdeka: { color: '#DC2626', icon: '🇮🇩' },
-  custom: { color: '#E11D48', icon: '✨' }
-};
-
 const DEFAULT_GREETINGS = {
   masuk: 'SELAMAT BEKERJA',
   istirahat: 'SELAMAT ISTIRAHAT',
   pulang: 'PEKERJAAN SELESAI, HATI HATI DI JALAN'
+};
+
+// Maskot cadangan SVG otomatis aktif jika file mascot.png belum diunggah ke GitHub
+const MASCOT_FALLBACK_SVG = 'data:image/svg+xml;charset=UTF-8,' + encodeURIComponent(
+  '<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 120 120">' +
+  '<circle cx="60" cy="60" r="58" fill="#FFF0F2" stroke="#C81E2B" stroke-width="4"/>' +
+  '<circle cx="34" cy="34" r="14" fill="#D97742"/>' +
+  '<circle cx="86" cy="34" r="14" fill="#D97742"/>' +
+  '<circle cx="34" cy="34" r="7" fill="#FDE2E4"/>' +
+  '<circle cx="86" cy="34" r="7" fill="#FDE2E4"/>' +
+  '<circle cx="60" cy="64" r="36" fill="#E89D6C"/>' +
+  '<ellipse cx="60" cy="72" rx="18" ry="13" fill="#FFF7F0"/>' +
+  '<circle cx="46" cy="58" r="4.5" fill="#2B1B17"/>' +
+  '<circle cx="74" cy="58" r="4.5" fill="#2B1B17"/>' +
+  '<circle cx="37" cy="68" r="5.5" fill="#FB7185" opacity="0.55"/>' +
+  '<circle cx="83" cy="68" r="5.5" fill="#FB7185" opacity="0.55"/>' +
+  '<ellipse cx="60" cy="67" rx="5.5" ry="4" fill="#4A2511"/>' +
+  '<path d="M53 75 Q60 81 67 75" fill="none" stroke="#4A2511" stroke-width="3" stroke-linecap="round"/>' +
+  '<path d="M35 30 Q60 12 85 30 Q80 42 60 39 Q40 42 35 30 Z" fill="#C81E2B"/>' +
+  '<circle cx="60" cy="24" r="5" fill="#FFFFFF"/>' +
+  '</svg>'
+);
+
+const NAV_ICONS = {
+  dashboard: '<svg class="nav-svg" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><rect x="3" y="3" width="7" height="7" rx="1.5"/><rect x="14" y="3" width="7" height="7" rx="1.5"/><rect x="3" y="14" width="7" height="7" rx="1.5"/><rect x="14" y="14" width="7" height="7" rx="1.5"/></svg>',
+  jadwal: '<svg class="nav-svg" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><rect x="3" y="4" width="18" height="18" rx="3"/><line x1="16" y1="2" x2="16" y2="6"/><line x1="8" y1="2" x2="8" y2="6"/><line x1="3" y1="10" x2="21" y2="10"/></svg>',
+  kalender: '<svg class="nav-svg" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><rect x="3" y="4" width="18" height="18" rx="3"/><line x1="16" y1="2" x2="16" y2="6"/><line x1="8" y1="2" x2="8" y2="6"/><path d="M9 15l2 2 4-4"/></svg>',
+  riwayat: '<svg class="nav-svg" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M3 12a9 9 0 1 0 3-6.7L3 8"/><path d="M3 3v5h5"/><polyline points="12 7 12 12 15 14"/></svg>',
+  galeri: '<svg class="nav-svg" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><rect x="3" y="3" width="18" height="18" rx="3"/><circle cx="8.5" cy="8.5" r="1.5"/><path d="M21 15l-5-5L5 21"/></svg>',
+  kelola: '<svg class="nav-svg" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><circle cx="12" cy="12" r="3"/><path d="M19.4 15a1.65 1.65 0 0 0 .33 1.82l.06.06a2 2 0 1 1-2.83 2.83l-.06-.06a1.65 1.65 0 0 0-1.82-.33 1.65 1.65 0 0 0-1 1.51V21a2 2 0 1 1-4 0v-.09A1.65 1.65 0 0 0 9 19.4a1.65 1.65 0 0 0-1.82.33l-.06.06a2 2 0 1 1-2.83-2.83l.06-.06a1.65 1.65 0 0 0 .33-1.82 1.65 1.65 0 0 0-1.51-1H3a2 2 0 1 1 0-4h.09A1.65 1.65 0 0 0 4.6 9a1.65 1.65 0 0 0-.33-1.82l-.06-.06a2 2 0 1 1 2.83-2.83l.06.06a1.65 1.65 0 0 0 1.82.33H9a1.65 1.65 0 0 0 1-1.51V3a2 2 0 1 1 4 0v.09a1.65 1.65 0 0 0 1 1.51 1.65 1.65 0 0 0 1.82-.33l.06-.06a2 2 0 1 1 2.83 2.83l-.06.06a1.65 1.65 0 0 0-.33 1.82V9c.26.6.85 1 1.51 1H21a2 2 0 1 1 0 4h-.09a1.65 1.65 0 0 0-1.51 1z"/></svg>',
+  pantau: '<svg class="nav-svg" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M1 12s4-8 11-8 11 8 11 8-4 8-11 8-11-8-11-8z"/><circle cx="12" cy="12" r="3"/></svg>',
+  insight: '<svg class="nav-svg" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><polyline points="23 6 13.5 15.5 8.5 10.5 1 18"/><polyline points="17 6 23 6 23 12"/></svg>'
 };
 
 const nowInit = new Date();
@@ -54,33 +77,31 @@ const nowInit = new Date();
 const state = {
   token: localStorage.getItem('momoyo_token') || '',
   user: JSON.parse(localStorage.getItem('momoyo_user') || 'null'),
-  theme: JSON.parse(localStorage.getItem('momoyo_theme') || '{"preset":"default","bannerText":"","customBgUrl":"","customBgMobileUrl":"","customBgDesktopUrl":""}'),
   greetings: JSON.parse(localStorage.getItem('momoyo_greetings') || JSON.stringify(DEFAULT_GREETINGS)),
+  activeView: '',
   todaySchedule: null,
   publicStores: [],
   publicCrews: [],
   stores: [],
   crews: [],
-  photoBase64: '',
+  // Foto absensi + waktu ambil aktual (untuk watermark permanen)
+  photoRawBase64: '',
+  photoCapturedAt: null,
   pendingDelete: null,
   lastRecap: null,
   charts: { store: null, days: null },
   deferredInstallPrompt: null,
-  // Sinkronisasi jam server & istirahat live
   serverOffsetMs: 0,
   myBreak: null,
   storeBreaks: [],
   dashActiveBreaks: [],
-  // Riwayat & Galeri Foto
   historyRecords: [],
   historyMode: 'list',
-  // Kalender Karyawan Pribadi
   calYear: nowInit.getFullYear(),
   calMonth: nowInit.getMonth() + 1,
   calRecordsByDate: {},
   calSchedulesByDate: {},
   calSelectedDate: '',
-  // Modal Detail Toko & Modal DETAILS Kalender Karyawan
   activeStoreDetail: '',
   adminCalTarget: null,
   adminCalYear: nowInit.getFullYear(),
@@ -88,24 +109,15 @@ const state = {
   adminCalRecordsByDate: {},
   adminCalSchedulesByDate: {},
   adminCalSelectedDate: '',
-  // Jadwal Shift Matrix per Toko
   jadwalStore: '',
   jadwalCrews: [],
   jadwalMap: {},
   jadwalDirty: {},
   jadwalBkoPending: null,
-  // Draft Upload Foto Karyawan (Admin Modal)
   crewPhotoDraft: '',
-  crewClearPhoto: false,
-  // Draft Tema & Dual Wallpaper (Admin Kelola)
-  themeDraftPreset: 'default',
-  themeWallpaperMobileDraft: '',
-  themeClearWallpaperMobile: false,
-  themeWallpaperDesktopDraft: '',
-  themeClearWallpaperDesktop: false
+  crewClearPhoto: false
 };
 
-// State Crop & Zoom Foto Profil
 const cropper = {
   img: null,
   baseScale: 1,
@@ -121,10 +133,11 @@ const cropper = {
 /* ======================== INISIALISASI ======================== */
 
 document.addEventListener('DOMContentLoaded', () => {
-  applyAppTheme(state.theme);
+  applyMascotAssets(document);
   initServiceWorker();
   initPwaInstall();
   initOfflineIndicator();
+  initPullToRefresh();
   initClock();
   bindEvents();
   initCropperEvents();
@@ -141,6 +154,19 @@ document.addEventListener('DOMContentLoaded', () => {
     loadPublicInit();
   }
 });
+
+function applyMascotAssets(root = document) {
+  root.querySelectorAll('img[data-mascot-img]').forEach((img) => {
+    if (img.dataset.mascotBound) return;
+    img.dataset.mascotBound = '1';
+    img.onerror = () => {
+      if (img.src !== MASCOT_FALLBACK_SVG) {
+        img.src = MASCOT_FALLBACK_SVG;
+      }
+    };
+    img.src = './mascot.png';
+  });
+}
 
 function initServiceWorker() {
   if ('serviceWorker' in navigator) {
@@ -196,67 +222,126 @@ function initClock() {
   setInterval(render, 1000);
 }
 
-/* ======================== TEMA, WALLPAPER RESPONSIF & UCAPAN DINAMIS ======================== */
+/* ======================== PULL-TO-REFRESH (60HZ SMOOTH) ======================== */
 
-function applyAppTheme(themeObj) {
-  if (!themeObj) return;
-  const preset = THEME_META[themeObj.preset] ? themeObj.preset : 'default';
-  const bannerText = String(themeObj.bannerText || '').trim();
-  const legacyUrl = String(themeObj.customBgUrl || '').trim();
-  const customBgMobileUrl = themeObj.customBgMobileUrl !== undefined
-    ? String(themeObj.customBgMobileUrl || '').trim()
-    : legacyUrl;
-  const customBgDesktopUrl = themeObj.customBgDesktopUrl !== undefined
-    ? String(themeObj.customBgDesktopUrl || '').trim()
-    : legacyUrl;
+function initPullToRefresh() {
+  const indicator = document.getElementById('ptrIndicator');
+  const ptrText = document.getElementById('ptrText');
+  const ptrSpinner = indicator ? indicator.querySelector('.ptr-spinner') : null;
+  if (!indicator) return;
 
-  state.theme = {
-    preset,
-    bannerText,
-    customBgUrl: customBgDesktopUrl || customBgMobileUrl || '',
-    customBgMobileUrl,
-    customBgDesktopUrl
+  let startY = 0;
+  let startX = 0;
+  let pulling = false;
+  let refreshing = false;
+  let pullDist = 0;
+  let rafId = 0;
+
+  const isBlockedTarget = (target) => {
+    if (!target) return true;
+    if (document.querySelector('.modal-backdrop:not(.hidden)')) return true;
+    if (target.closest('.jadwal-matrix-wrap, .table-wrap, .crop-stage, input, select, textarea')) return true;
+    return false;
   };
-  localStorage.setItem('momoyo_theme', JSON.stringify(state.theme));
 
-  document.body.setAttribute('data-theme', preset);
-  const metaTheme = document.querySelector('meta[name="theme-color"]');
-  if (metaTheme) metaTheme.setAttribute('content', THEME_META[preset].color);
+  const renderFrame = () => {
+    rafId = 0;
+    const clamped = Math.max(0, Math.min(96, pullDist));
+    const yPos = -48 + clamped * 0.72;
+    indicator.style.transform = `translate3d(0, ${yPos}px, 0)`;
+    if (ptrSpinner) {
+      ptrSpinner.style.transform = `rotate(${clamped * 4}deg)`;
+    }
+    if (clamped >= 56) {
+      ptrText.textContent = 'Lepas untuk muat ulang';
+    } else {
+      ptrText.textContent = 'Tarik untuk muat ulang';
+    }
+  };
 
-  const wallEl = document.getElementById('themeWallpaper');
-  if (wallEl) {
-    if (customBgMobileUrl || customBgDesktopUrl) {
-      wallEl.classList.add('has-custom-img');
-      wallEl.style.backgroundImage = '';
-      if (customBgMobileUrl) {
-        wallEl.style.setProperty('--wp-mobile', `url("${customBgMobileUrl}")`);
-      } else {
-        wallEl.style.removeProperty('--wp-mobile');
+  window.addEventListener('touchstart', (e) => {
+    if (refreshing || e.touches.length !== 1) return;
+    if (window.scrollY > 2) return;
+    if (document.getElementById('appShell').classList.contains('hidden')) return;
+    if (isBlockedTarget(e.target)) return;
+
+    startY = e.touches[0].clientY;
+    startX = e.touches[0].clientX;
+    pulling = true;
+    pullDist = 0;
+  }, { passive: true });
+
+  window.addEventListener('touchmove', (e) => {
+    if (!pulling || refreshing || e.touches.length !== 1) return;
+    const dy = e.touches[0].clientY - startY;
+    const dx = e.touches[0].clientX - startX;
+
+    if (dy <= 6 || window.scrollY > 2 || Math.abs(dx) > Math.abs(dy) * 0.85) {
+      if (pullDist > 0) {
+        pullDist = 0;
+        indicator.classList.remove('is-visible', 'is-dragging');
+        indicator.style.transform = 'translate3d(0, -48px, 0)';
       }
-      if (customBgDesktopUrl) {
-        wallEl.style.setProperty('--wp-desktop', `url("${customBgDesktopUrl}")`);
-      } else {
-        wallEl.style.removeProperty('--wp-desktop');
+      if (Math.abs(dx) > 14) pulling = false;
+      return;
+    }
+
+    pullDist = Math.min(96, dy * 0.46);
+    indicator.classList.add('is-visible', 'is-dragging');
+    if (!rafId) rafId = requestAnimationFrame(renderFrame);
+  }, { passive: true });
+
+  const finishPull = async () => {
+    if (!pulling) return;
+    pulling = false;
+    if (rafId) {
+      cancelAnimationFrame(rafId);
+      rafId = 0;
+    }
+    indicator.classList.remove('is-dragging');
+
+    if (pullDist >= 56 && !refreshing) {
+      refreshing = true;
+      indicator.classList.add('is-visible', 'is-refreshing');
+      indicator.style.transform = 'translate3d(0, 10px, 0)';
+      ptrText.textContent = 'Memuat ulang...';
+      try {
+        await refreshActiveView(true);
+      } finally {
+        setTimeout(() => {
+          indicator.classList.remove('is-visible', 'is-refreshing');
+          indicator.style.transform = 'translate3d(0, -48px, 0)';
+          if (ptrSpinner) ptrSpinner.style.transform = '';
+          refreshing = false;
+          pullDist = 0;
+        }, 260);
       }
     } else {
-      wallEl.classList.remove('has-custom-img');
-      wallEl.style.removeProperty('--wp-mobile');
-      wallEl.style.removeProperty('--wp-desktop');
-      wallEl.style.backgroundImage = '';
+      indicator.classList.remove('is-visible');
+      indicator.style.transform = 'translate3d(0, -48px, 0)';
+      pullDist = 0;
     }
-  }
+  };
 
-  const bannerEl = document.getElementById('themeBanner');
-  if (bannerEl) {
-    if (bannerText) {
-      document.getElementById('themeBannerIcon').textContent = THEME_META[preset].icon;
-      document.getElementById('themeBannerText').textContent = bannerText;
-      bannerEl.classList.remove('hidden');
-    } else {
-      bannerEl.classList.add('hidden');
-    }
+  window.addEventListener('touchend', finishPull, { passive: true });
+  window.addEventListener('touchcancel', finishPull, { passive: true });
+}
+
+async function refreshActiveView(silent = false) {
+  const v = state.activeView;
+  if (v === 'viewDashboard') return loadDashboard(silent);
+  if (v === 'viewJadwal') return loadJadwalView();
+  if (v === 'viewRiwayat') return loadHistory();
+  if (v === 'viewKalenderSaya') return loadCrewCalendar();
+  if (v === 'viewInsight') return loadInsights(null, silent);
+  if (v === 'viewKelola') return loadMasterData(silent);
+  if (v === 'viewAbsen') {
+    await refreshMyProfileSilently();
+    return loadActiveBreaksForAbsen();
   }
 }
+
+/* ======================== TEKS UCAPAN DINAMIS ======================== */
 
 function applyGreetings(gObj) {
   if (!gObj) return;
@@ -307,87 +392,6 @@ async function saveAbsenGreetings(e) {
   }
 }
 
-function syncThemeControls() {
-  state.themeDraftPreset = state.theme.preset || 'default';
-  state.themeWallpaperMobileDraft = '';
-  state.themeClearWallpaperMobile = false;
-  state.themeWallpaperDesktopDraft = '';
-  state.themeClearWallpaperDesktop = false;
-
-  document.querySelectorAll('#themePresetGrid .theme-chip').forEach((btn) => {
-    btn.classList.toggle('active', btn.dataset.themePreset === state.themeDraftPreset);
-  });
-  document.getElementById('themeBannerInput').value = state.theme.bannerText || '';
-
-  const mobBox = document.getElementById('wallpaperMobilePreviewBox');
-  const mobImg = document.getElementById('wallpaperMobilePreviewImg');
-  if (state.theme.customBgMobileUrl) {
-    mobImg.src = state.theme.customBgMobileUrl;
-    mobBox.classList.remove('hidden');
-  } else {
-    mobImg.src = '';
-    mobBox.classList.add('hidden');
-  }
-
-  const deskBox = document.getElementById('wallpaperDesktopPreviewBox');
-  const deskImg = document.getElementById('wallpaperDesktopPreviewImg');
-  if (state.theme.customBgDesktopUrl) {
-    deskImg.src = state.theme.customBgDesktopUrl;
-    deskBox.classList.remove('hidden');
-  } else {
-    deskImg.src = '';
-    deskBox.classList.add('hidden');
-  }
-}
-
-function handleWallpaperSlotPick(e, target) {
-  const file = e.target.files && e.target.files[0];
-  e.target.value = '';
-  if (!file) return;
-  if (!file.type.startsWith('image/')) return showToast('Pilih file gambar.', 'error');
-
-  setLoading(true, target === 'mobile' ? 'Menyiapkan wallpaper HP...' : 'Menyiapkan wallpaper Laptop...');
-  const maxDim = target === 'mobile' ? 1280 : 1600;
-  compressImage(file, maxDim, 0.8)
-    .then(({ base64 }) => {
-      if (target === 'mobile') {
-        state.themeWallpaperMobileDraft = base64;
-        state.themeClearWallpaperMobile = false;
-        document.getElementById('wallpaperMobilePreviewImg').src = base64;
-        document.getElementById('wallpaperMobilePreviewBox').classList.remove('hidden');
-      } else {
-        state.themeWallpaperDesktopDraft = base64;
-        state.themeClearWallpaperDesktop = false;
-        document.getElementById('wallpaperDesktopPreviewImg').src = base64;
-        document.getElementById('wallpaperDesktopPreviewBox').classList.remove('hidden');
-      }
-    })
-    .catch(() => showToast('Gagal memproses gambar wallpaper.', 'error'))
-    .finally(() => setLoading(false));
-}
-
-async function saveAppTheme() {
-  setLoading(true, 'Menerapkan tema & wallpaper ke semua perangkat...');
-  try {
-    const res = await apiCall({
-      action: 'saveAppTheme',
-      preset: state.themeDraftPreset,
-      bannerText: document.getElementById('themeBannerInput').value.trim(),
-      wallpaperMobileBase64: state.themeWallpaperMobileDraft,
-      clearWallpaperMobile: state.themeClearWallpaperMobile,
-      wallpaperDesktopBase64: state.themeWallpaperDesktopDraft,
-      clearWallpaperDesktop: state.themeClearWallpaperDesktop
-    }, 55000);
-    applyAppTheme(res.theme);
-    syncThemeControls();
-    showToast(res.message || 'Tema & wallpaper berhasil diterapkan!', 'success');
-  } catch (err) {
-    showToast(err.message, 'error');
-  } finally {
-    setLoading(false);
-  }
-}
-
 /* ======================== API HELPER ======================== */
 
 async function apiCall(payload, timeoutMs = 35000) {
@@ -417,7 +421,6 @@ async function apiCall(payload, timeoutMs = 35000) {
       throw new Error('Respon server tidak valid. Pastikan Web App Apps Script sudah di-deploy.');
     }
 
-    if (data.theme) applyAppTheme(data.theme);
     if (data.greetings) applyGreetings(data.greetings);
     if (data.serverNowMs) state.serverOffsetMs = data.serverNowMs - Date.now();
 
@@ -607,13 +610,22 @@ function renderHeaderUser() {
   }
 }
 
+function getInitials(name) {
+  const clean = String(name || 'M').trim().replace(/\s+/g, ' ');
+  const parts = clean.split(' ');
+  if (parts.length >= 2) {
+    return (parts[0][0] + parts[1][0]).toUpperCase();
+  }
+  return clean.slice(0, 2).toUpperCase();
+}
+
 function renderAvatar(el, fotoUrl, nama) {
   if (!el) return;
-  const initial = (nama || 'M').trim()[0].toUpperCase();
+  const initials = getInitials(nama);
   if (fotoUrl) {
-    el.innerHTML = `<img src="${esc(toDisplayImageUrl(fotoUrl))}" alt="${esc(nama)}" onerror="this.remove();this.parentNode.textContent='${esc(initial)}';" />`;
+    el.innerHTML = `<img src="${esc(toDisplayImageUrl(fotoUrl))}" alt="${esc(nama)}" onerror="this.remove();this.parentNode.textContent='${esc(initials)}';" />`;
   } else {
-    el.textContent = initial;
+    el.textContent = initials;
   }
 }
 
@@ -714,11 +726,8 @@ function handleMyPhotoPick(e) {
         action: 'updateMyPhoto',
         photoBase64: croppedBase64
       }, 45000);
-      if (res.user) {
-        state.user = res.user;
-      } else {
-        state.user.fotoProfil = res.fotoProfil || '';
-      }
+      if (res.user) state.user = res.user;
+      else state.user.fotoProfil = res.fotoProfil || '';
       localStorage.setItem('momoyo_user', JSON.stringify(state.user));
       renderHeaderUser();
       renderAvatar(document.getElementById('profileAvatarLg'), state.user.fotoProfil, state.user.nama);
@@ -748,7 +757,7 @@ async function clearMyPhoto() {
   }
 }
 
-/* ======================== CROP & ZOOM FOTO PROFIL (ALA SOSMED) ======================== */
+/* ======================== CROP & ZOOM FOTO PROFIL ======================== */
 
 function openCropModalForFile(file, onDone) {
   const reader = new FileReader();
@@ -794,7 +803,7 @@ function drawCropCanvas() {
   const ctx = canvas.getContext('2d');
   const size = canvas.width;
   ctx.clearRect(0, 0, size, size);
-  ctx.fillStyle = '#0F172A';
+  ctx.fillStyle = '#141824';
   ctx.fillRect(0, 0, size, size);
 
   const drawW = cropper.img.width * cropper.baseScale * cropper.zoom;
@@ -872,43 +881,56 @@ function initCropperEvents() {
   });
 }
 
-/* ======================== NAVIGASI BAWAH ======================== */
+/* ======================== FLOATING PILL BOTTOM NAVIGATION (SVG) ======================== */
 
 function buildBottomNav(role) {
   const nav = document.getElementById('bottomNav');
   let items;
   if (role === 'ADMIN') {
     items = [
-      { view: 'viewDashboard', icon: '📊', label: 'Dashboard' },
-      { view: 'viewJadwal', icon: '🗓️', label: 'Jadwal' },
-      { view: 'viewAbsen', icon: '📸', label: 'Absen', center: true },
-      { view: 'viewRiwayat', icon: '📋', label: 'Riwayat' },
-      { view: 'viewKelola', icon: '⚙️', label: 'Kelola' }
+      { view: 'viewDashboard', icon: NAV_ICONS.dashboard, label: 'Dashboard' },
+      { view: 'viewJadwal', icon: NAV_ICONS.jadwal, label: 'Jadwal' },
+      { view: 'viewAbsen', label: 'Absen', center: true },
+      { view: 'viewRiwayat', icon: NAV_ICONS.riwayat, label: 'Riwayat' },
+      { view: 'viewKelola', icon: NAV_ICONS.kelola, label: 'Kelola' }
     ];
   } else if (role === 'MONITORING') {
     items = [
-      { view: 'viewDashboard', icon: '📊', label: 'Live' },
-      { view: 'viewJadwal', icon: '🗓️', label: 'Jadwal' },
-      { view: 'viewRiwayat', icon: '🖼️', label: 'Riwayat & Foto' },
-      { view: 'viewInsight', icon: '📈', label: 'Insight' }
+      { view: 'viewDashboard', icon: NAV_ICONS.dashboard, label: 'Live' },
+      { view: 'viewJadwal', icon: NAV_ICONS.jadwal, label: 'Jadwal' },
+      { view: 'viewRiwayat', icon: NAV_ICONS.galeri, label: 'Riwayat' },
+      { view: 'viewInsight', icon: NAV_ICONS.insight, label: 'Insight' }
     ];
   } else {
-    // KARYAWAN
     items = [
-      { view: 'viewKalenderSaya', icon: '📅', label: 'Kalender' },
-      { view: 'viewJadwal', icon: '🗓️', label: 'Jadwal' },
-      { view: 'viewAbsen', icon: '📸', label: 'Absen', center: true },
-      { view: 'viewDashboard', icon: '👁️', label: 'Pantau' },
-      { view: 'viewRiwayat', icon: '🖼️', label: 'Galeri' }
+      { view: 'viewKalenderSaya', icon: NAV_ICONS.kalender, label: 'Kalender' },
+      { view: 'viewJadwal', icon: NAV_ICONS.jadwal, label: 'Jadwal' },
+      { view: 'viewAbsen', label: 'Absen', center: true },
+      { view: 'viewDashboard', icon: NAV_ICONS.pantau, label: 'Pantau' },
+      { view: 'viewRiwayat', icon: NAV_ICONS.galeri, label: 'Galeri' }
     ];
   }
 
-  nav.innerHTML = items.map((it) => `
-    <button type="button" class="nav-item ${it.center ? 'nav-center' : ''}" data-view="${it.view}">
-      <span class="nav-icon">${it.icon}</span>
-      <span>${it.label}</span>
-    </button>
-  `).join('');
+  nav.innerHTML = items.map((it) => {
+    if (it.center) {
+      return `
+        <button type="button" class="nav-item nav-center" data-view="${it.view}" aria-label="${it.label}">
+          <span class="nav-center-btn">
+            <span class="nav-center-mascot"><img data-mascot-img alt="" /></span>
+            <span class="nav-center-label">${it.label}</span>
+          </span>
+        </button>
+      `;
+    }
+    return `
+      <button type="button" class="nav-item" data-view="${it.view}">
+        ${it.icon}
+        <span>${it.label}</span>
+      </button>
+    `;
+  }).join('');
+
+  applyMascotAssets(nav);
 
   nav.querySelectorAll('.nav-item').forEach((btn) => {
     btn.addEventListener('click', () => switchView(btn.dataset.view));
@@ -916,6 +938,7 @@ function buildBottomNav(role) {
 }
 
 function switchView(viewId) {
+  state.activeView = viewId;
   document.querySelectorAll('.page-view').forEach((v) => v.classList.add('hidden'));
   const target = document.getElementById(viewId);
   if (target) target.classList.remove('hidden');
@@ -924,6 +947,8 @@ function switchView(viewId) {
   document.querySelectorAll('#bottomNav .nav-item').forEach((btn) => {
     btn.classList.toggle('active', btn.dataset.view === navHighlight);
   });
+
+  window.scrollTo({ top: 0, behavior: 'instant' });
 
   if (viewId === 'viewAbsen') {
     updateAbsenGreetingDisplay();
@@ -938,7 +963,7 @@ function switchView(viewId) {
   if (viewId === 'viewKelola') loadMasterData();
 }
 
-/* ======================== FORM ABSENSI, JADWAL HARI INI & ISTIRAHAT ======================== */
+/* ======================== FORM ABSENSI, WATERMARK FOTO & ISTIRAHAT ======================== */
 
 function setupAbsenForm() {
   const isAdmin = state.user.role === 'ADMIN';
@@ -1129,6 +1154,16 @@ function formatRemainingMs(ms) {
   return `${pad2(h)}:${pad2(m)}:${pad2(s)}`;
 }
 
+function formatFullIndoDateTime(dtObj) {
+  const d = dtObj instanceof Date ? dtObj : new Date();
+  const hari = HARI_ID[d.getDay()];
+  const tgl = pad2(d.getDate());
+  const bln = BULAN_ID[d.getMonth()];
+  const thn = d.getFullYear();
+  const jam = `${pad2(d.getHours())}:${pad2(d.getMinutes())}:${pad2(d.getSeconds())}`;
+  return `${hari}, ${tgl} ${bln} ${thn} • ${jam} WIB`;
+}
+
 function handlePhotoSelected(e) {
   const file = e.target.files && e.target.files[0];
   if (!file) return;
@@ -1137,12 +1172,15 @@ function handlePhotoSelected(e) {
     return;
   }
 
+  const capturedNow = new Date(Date.now() + state.serverOffsetMs);
   setLoading(true, 'Mengompres foto...');
-  compressImage(file, 1200, 0.72)
+  compressImage(file, 1200, 0.78)
     .then(({ base64, sizeKB }) => {
-      state.photoBase64 = base64;
+      state.photoRawBase64 = base64;
+      state.photoCapturedAt = capturedNow;
+      const capTimeStr = `${pad2(capturedNow.getHours())}:${pad2(capturedNow.getMinutes())}:${pad2(capturedNow.getSeconds())} WIB`;
       document.getElementById('photoPreviewImg').src = base64;
-      document.getElementById('photoSizeInfo').textContent = `Siap dikirim (${sizeKB} KB)`;
+      document.getElementById('photoSizeInfo').textContent = `Siap dikirim (${sizeKB} KB) • Foto ${capTimeStr}`;
       document.getElementById('photoPreviewBox').classList.remove('hidden');
       document.getElementById('photoEmptyBox').classList.add('hidden');
       document.getElementById('absenRetryBox').classList.add('hidden');
@@ -1186,8 +1224,75 @@ function compressImage(file, maxDim, quality) {
   });
 }
 
+// Menanam watermark permanen (tanggal, bulan, tahun & jam aktual foto + submit) ke gambar
+function bakeTimestampWatermark(rawBase64, meta) {
+  return new Promise((resolve, reject) => {
+    const img = new Image();
+    img.onerror = reject;
+    img.onload = () => {
+      const w = img.width;
+      const h = img.height;
+      const canvas = document.createElement('canvas');
+      canvas.width = w;
+      canvas.height = h;
+      const ctx = canvas.getContext('2d');
+      ctx.drawImage(img, 0, 0, w, h);
+
+      const scale = Math.max(0.65, Math.min(1.35, w / 900));
+      const padX = Math.round(22 * scale);
+      const padY = Math.round(16 * scale);
+      const fontLg = Math.round(24 * scale);
+      const fontMd = Math.round(19 * scale);
+      const fontSm = Math.round(17 * scale);
+      const lineGap = Math.round(8 * scale);
+
+      const boxH = padY * 2 + fontLg + fontMd + fontSm * 2 + lineGap * 3 + Math.round(10 * scale);
+      const boxY = Math.max(0, h - boxH);
+
+      // Latar gradasi gelap lembut di sisi bawah agar teks tajam di segala pencahayaan
+      const grad = ctx.createLinearGradient(0, boxY - Math.round(24 * scale), 0, h);
+      grad.addColorStop(0, 'rgba(15, 20, 32, 0)');
+      grad.addColorStop(0.2, 'rgba(15, 20, 32, 0.72)');
+      grad.addColorStop(1, 'rgba(15, 20, 32, 0.88)');
+      ctx.fillStyle = grad;
+      ctx.fillRect(0, boxY - Math.round(24 * scale), w, boxH + Math.round(24 * scale));
+
+      // Garis aksen merah MOMOYO di sisi kiri kotak teks
+      ctx.fillStyle = '#E52B3B';
+      ctx.fillRect(padX, boxY + padY, Math.round(5 * scale), boxH - padY * 2);
+
+      const textX = padX + Math.round(15 * scale);
+      let curY = boxY + padY + fontLg;
+
+      ctx.textBaseline = 'alphabetic';
+      ctx.fillStyle = '#FFFFFF';
+      ctx.font = `800 ${fontLg}px "Plus Jakarta Sans", -apple-system, sans-serif`;
+      ctx.fillText(`MOMOYO ABSENSI • ${meta.jenis} (${meta.shift})`, textX, curY);
+
+      curY += fontMd + lineGap;
+      ctx.fillStyle = '#FFE4E7';
+      ctx.font = `700 ${fontMd}px "Plus Jakarta Sans", -apple-system, sans-serif`;
+      ctx.fillText(`${meta.nama}  •  ${meta.toko}`, textX, curY);
+
+      curY += fontSm + lineGap + Math.round(2 * scale);
+      ctx.fillStyle = '#F8FAFC';
+      ctx.font = `600 ${fontSm}px "Plus Jakarta Sans", -apple-system, sans-serif`;
+      ctx.fillText(`Waktu Foto   : ${formatFullIndoDateTime(meta.capturedAt)}`, textX, curY);
+
+      curY += fontSm + lineGap;
+      ctx.fillStyle = '#FDE68A';
+      ctx.font = `700 ${fontSm}px "Plus Jakarta Sans", -apple-system, sans-serif`;
+      ctx.fillText(`Waktu Submit : ${formatFullIndoDateTime(meta.submittedAt)}`, textX, curY);
+
+      resolve(canvas.toDataURL('image/jpeg', 0.8));
+    };
+    img.src = rawBase64;
+  });
+}
+
 function clearPhoto() {
-  state.photoBase64 = '';
+  state.photoRawBase64 = '';
+  state.photoCapturedAt = null;
   document.getElementById('photoPreviewImg').src = '';
   document.getElementById('photoPreviewBox').classList.add('hidden');
   document.getElementById('photoEmptyBox').classList.remove('hidden');
@@ -1215,7 +1320,7 @@ async function submitAttendance(e) {
   const nama = document.getElementById('absenNama').value.trim();
 
   if (!nama || !toko) return showToast('Nama dan toko wajib terisi.', 'error');
-  if (!state.photoBase64) return showToast('Wajib unggah foto selfie terlebih dahulu.', 'error');
+  if (!state.photoRawBase64) return showToast('Wajib unggah foto selfie terlebih dahulu.', 'error');
 
   document.getElementById('absenRetryBox').classList.add('hidden');
   let coords = {};
@@ -1231,15 +1336,25 @@ async function submitAttendance(e) {
     }
   }
 
-  setLoading(true, 'Mengunggah foto & mencatat absen...');
+  setLoading(true, 'Menyematkan stempel waktu & mengunggah foto...');
   try {
+    const submittedAt = new Date(Date.now() + state.serverOffsetMs);
+    const stampedPhoto = await bakeTimestampWatermark(state.photoRawBase64, {
+      nama,
+      toko,
+      jenis,
+      shift,
+      capturedAt: state.photoCapturedAt || submittedAt,
+      submittedAt
+    });
+
     const res = await apiCall({
       action: 'submitAttendance',
       jenis,
       shift,
       toko,
       nama,
-      photoBase64: state.photoBase64,
+      photoBase64: stampedPhoto,
       lat: coords.lat,
       lng: coords.lng
     }, 45000);
@@ -1359,6 +1474,20 @@ function renderCalendarGridInto(gridEl, year, month, byDate, schedByDate, select
   });
 }
 
+function encodePhotoMeta(rec) {
+  if (!rec) return '';
+  return encodeURIComponent(JSON.stringify({
+    nama: rec.nama || '',
+    toko: rec.toko || '',
+    jenis: rec.jenis || '',
+    shift: rec.shift || '',
+    hari: rec.hari || '',
+    tanggalDisplay: rec.tanggalDisplay || '',
+    jam: rec.jam || '',
+    status: rec.status || ''
+  }));
+}
+
 function renderCalendarDayDetailInto(titleEl, bodyEl, dateKey, list, sched, totalBulanIni) {
   const parts = dateKey.split('-').map(Number);
   const dtObj = new Date(parts[0], parts[1] - 1, parts[2]);
@@ -1371,7 +1500,7 @@ function renderCalendarDayDetailInto(titleEl, bodyEl, dateKey, list, sched, tota
   if (!list || !list.length) {
     bodyEl.innerHTML = `
       <div class="day-detail-box">
-        <div class="detail-grid" style="margin-top:0;padding:0;background:transparent">
+        <div class="detail-grid" style="margin-top:0;padding:0;background:transparent;border:none">
           <div class="detail-row"><span>Jadwal</span><strong>${esc(schedText)}</strong></div>
           <div class="detail-row"><span>Absensi</span><strong>Tidak ada catatan absensi</strong></div>
           <div class="detail-row"><span>Total Masuk Bulan Ini</span><strong>${esc(totalBulanIni)}</strong></div>
@@ -1389,7 +1518,7 @@ function renderCalendarDayDetailInto(titleEl, bodyEl, dateKey, list, sched, tota
 
   bodyEl.innerHTML = `
     <div class="day-detail-box">
-      <div class="detail-grid" style="margin-top:0;padding:0;background:transparent">
+      <div class="detail-grid" style="margin-top:0;padding:0;background:transparent;border:none">
         <div class="detail-row"><span>Jadwal</span><strong>${esc(schedText)}</strong></div>
         <div class="detail-row"><span>Shift Absen</span><strong>${esc(shiftLabel)}</strong></div>
         <div class="detail-row"><span>Jam Masuk</span><strong>${masuk ? esc(masuk.jam) + ' WIB' : '-'}</strong></div>
@@ -1402,14 +1531,14 @@ function renderCalendarDayDetailInto(titleEl, bodyEl, dateKey, list, sched, tota
       </div>
       <div class="photo-btn-row photo-btn-row-3">
         ${masuk && masuk.foto
-          ? `<button type="button" class="btn btn-outline btn-sm" onclick="previewPhoto('${esc(masuk.foto)}')">Foto Masuk</button>`
+          ? `<button type="button" class="btn btn-outline btn-sm" onclick="previewPhoto('${esc(masuk.foto)}','${encodePhotoMeta(masuk)}')">Foto Masuk</button>`
           : `<button type="button" class="btn btn-outline btn-sm" disabled>Foto Masuk (-)</button>`}
         ${istirahat && istirahat.foto
-          ? `<button type="button" class="btn btn-outline btn-sm" onclick="previewPhoto('${esc(istirahat.foto)}')">Foto Istirahat</button>`
+          ? `<button type="button" class="btn btn-outline btn-sm" onclick="previewPhoto('${esc(istirahat.foto)}','${encodePhotoMeta(istirahat)}')">Foto Istirahat</button>`
           : `<button type="button" class="btn btn-outline btn-sm" disabled>Foto Istirahat (-)</button>`}
         ${pulang && pulang.foto
-          ? `<button type="button" class="btn btn-soft btn-sm" onclick="previewPhoto('${esc(pulang.foto)}')">Foto Pulang</button>`
-          : `<button type="button" class="btn btn-soft btn-sm" disabled>Foto Pulang (-)</button>`}
+          ? `<button type="button" class="btn btn-blush btn-sm" onclick="previewPhoto('${esc(pulang.foto)}','${encodePhotoMeta(pulang)}')">Foto Pulang</button>`
+          : `<button type="button" class="btn btn-blush btn-sm" disabled>Foto Pulang (-)</button>`}
       </div>
     </div>
   `;
@@ -1468,7 +1597,7 @@ function selectCrewCalendarDay(dateKey) {
   );
 }
 
-/* ======================== MODAL DETAILS: KALENDER KARYAWAN (ADMIN & MONITORING) ======================== */
+/* ======================== MODAL DETAILS: KALENDER KARYAWAN ======================== */
 
 window.openCrewCalendarModal = function (encodedCrew) {
   const crew = JSON.parse(decodeURIComponent(encodedCrew));
@@ -1621,7 +1750,7 @@ function renderHistoryGallery(container, records) {
     return;
   }
   container.innerHTML = withPhoto.map((r) => `
-    <div class="gallery-card" onclick="previewPhoto('${esc(r.foto)}')">
+    <div class="gallery-card" onclick="previewPhoto('${esc(r.foto)}','${encodePhotoMeta(r)}')">
       <img class="gallery-thumb" loading="lazy" src="${esc(toDisplayImageUrl(r.foto, 500))}" alt="${esc(r.nama)}" />
       <div class="gallery-meta">
         <div style="display:flex;justify-content:space-between;align-items:center;gap:6px">
@@ -1629,15 +1758,26 @@ function renderHistoryGallery(container, records) {
           <span class="badge ${jenisBadgeClass(r.jenis)}">${esc(r.jenis)}</span>
         </div>
         <span>${esc(r.toko)} • ${esc(r.shift)}</span>
-        <span>${esc(r.tanggalDisplay)} • ${esc(r.jam)}</span>
+        <span>${esc(r.tanggalDisplay)} • ${esc(r.jam)} WIB</span>
       </div>
     </div>
   `).join('');
 }
 
-function renderRecordList(container, records, allowAdminActions) {
+function renderRecordList(container, records, allowAdminActions, isTodayEmpty = false) {
   if (!records.length) {
-    container.innerHTML = '<div class="empty-state">Belum ada data absensi sesuai filter.</div>';
+    if (isTodayEmpty) {
+      container.innerHTML = `
+        <div class="mascot-empty-box">
+          <div class="mascot-empty-circle"><img data-mascot-img alt="" /></div>
+          <strong>Belum ada data absensi</strong>
+          <span>Data akan muncul setelah karyawan melakukan absen hari ini.</span>
+        </div>
+      `;
+      applyMascotAssets(container);
+    } else {
+      container.innerHTML = '<div class="empty-state">Belum ada data absensi sesuai filter.</div>';
+    }
     return;
   }
 
@@ -1660,7 +1800,7 @@ function renderRecordList(container, records, allowAdminActions) {
             ${r.status && r.status !== '-' ? `<span class="badge ${statusClass}" style="margin-left:6px">${esc(r.status)}</span>` : ''}
           </div>
           <div class="record-actions">
-            ${r.foto ? `<button type="button" class="btn-ghost-sm" onclick="previewPhoto('${esc(r.foto)}')">Foto</button>` : ''}
+            ${r.foto ? `<button type="button" class="btn-ghost-sm" onclick="previewPhoto('${esc(r.foto)}','${encodePhotoMeta(r)}')">Foto</button>` : ''}
             ${allowAdminActions ? `
               <button type="button" class="btn-ghost-sm" onclick="openEditModal('${encoded}')">Edit</button>
               <button type="button" class="btn-ghost-sm text-danger" onclick="openDeleteModal(${r.rowNumber}, '${esc(r.id)}', '${esc(r.nama)} (${esc(r.jenis)})')">Hapus</button>
@@ -1672,14 +1812,14 @@ function renderRecordList(container, records, allowAdminActions) {
   }).join('');
 }
 
-/* ======================== DASHBOARD LIVE & DETAIL TOKO ======================== */
+/* ======================== DASHBOARD LIVE & GRAFIK 3D ======================== */
 
-async function loadDashboard() {
+async function loadDashboard(silent = false) {
   const isAdmin = state.user.role === 'ADMIN';
   document.getElementById('dashHeadingTitle').textContent = isAdmin ? 'Dashboard Hari Ini' : 'Management Monitoring — Live';
   document.getElementById('dashTopSwitcher').classList.toggle('hidden', state.user.role === 'MONITORING');
 
-  setLoading(true, 'Memuat data live...');
+  if (!silent) setLoading(true, 'Memuat data live...');
   try {
     const res = await apiCall({ action: isAdmin ? 'getDashboard' : 'getMonitoringDashboard' });
     if (res.stores && res.stores.length) populateFilterStores(res.stores);
@@ -1696,20 +1836,32 @@ async function loadDashboard() {
     state.dashActiveBreaks = res.activeBreaks || [];
     if (state.dashActiveBreaks.length) {
       brCard.classList.remove('hidden');
-      brList.innerHTML = state.dashActiveBreaks.map((b) => `
-        <div class="mini-item">
-          <div>
-            <strong>${esc(b.nama)}</strong> (${esc(b.toko)})
-            <div class="record-sub">Shift ${esc(b.shift)} • Mulai ${esc(b.startJam)} s/d ${esc(b.endJam)} WIB</div>
+      brList.innerHTML = state.dashActiveBreaks.map((b) => {
+        const meta = encodePhotoMeta({
+          nama: b.nama,
+          toko: b.toko,
+          jenis: 'ISTIRAHAT',
+          shift: b.shift,
+          hari: '',
+          tanggalDisplay: res.serverDate,
+          jam: b.startJam,
+          status: `s/d ${b.endJam} WIB`
+        });
+        return `
+          <div class="mini-item">
+            <div>
+              <strong>${esc(b.nama)}</strong> (${esc(b.toko)})
+              <div class="record-sub">Shift ${esc(b.shift)} • Mulai ${esc(b.startJam)} s/d ${esc(b.endJam)} WIB</div>
+            </div>
+            <div style="display:flex;align-items:center;gap:6px">
+              ${b.foto ? `<button type="button" class="btn-ghost-sm" onclick="previewPhoto('${esc(b.foto)}','${meta}')">Foto</button>` : ''}
+              <span class="badge ${b.isOngoing ? 'badge-warning' : 'badge-masuk'} live-break-badge" data-end-ms="${b.endMs}">
+                ${b.isOngoing ? `Sisa ${formatRemainingMs(b.endMs - (Date.now() + state.serverOffsetMs))}` : 'Selesai'}
+              </span>
+            </div>
           </div>
-          <div style="display:flex;align-items:center;gap:6px">
-            ${b.foto ? `<button type="button" class="btn-ghost-sm" onclick="previewPhoto('${esc(b.foto)}')">Foto</button>` : ''}
-            <span class="badge ${b.isOngoing ? 'badge-warning' : 'badge-masuk'} live-break-badge" data-end-ms="${b.endMs}">
-              ${b.isOngoing ? `Sisa ${formatRemainingMs(b.endMs - (Date.now() + state.serverOffsetMs))}` : 'Selesai'}
-            </span>
-          </div>
-        </div>
-      `).join('');
+        `;
+      }).join('');
     } else {
       brCard.classList.add('hidden');
     }
@@ -1733,46 +1885,149 @@ async function loadDashboard() {
 
     document.getElementById('dashStoreTable').innerHTML = (res.perStore || []).map((s) => `
       <tr class="clickable-row" onclick="openStoreDetail(decodeURIComponent('${encodeURIComponent(s.toko)}'))">
-        <td><strong>${esc(s.toko)} &rsaquo;</strong></td>
-        <td>${s.masuk}</td>
-        <td>${s.istirahat || 0}</td>
-        <td>${s.pulang}</td>
-        <td>${s.belumPulang > 0 ? `<span class="badge badge-warning">${s.belumPulang}</span>` : '0'}</td>
-        <td>${s.terlambat > 0 ? `<span class="badge badge-danger">${s.terlambat}</span>` : '0'}</td>
+        <td>
+          <div class="row-entity-cell">
+            <span class="row-init-badge">${esc(getInitials(s.toko))}</span>
+            <span class="row-entity-name">${esc(s.toko)}</span>
+          </div>
+        </td>
+        <td class="text-center"><strong>${s.masuk}</strong></td>
+        <td class="text-center">${s.istirahat || 0}</td>
+        <td class="text-center">${s.pulang}</td>
+        <td class="text-center">${s.belumPulang > 0 ? `<span class="num-pill num-pill-warn">${s.belumPulang}</span>` : '0'}</td>
+        <td class="text-center">${s.terlambat > 0 ? `<span class="num-pill num-pill-danger">${s.terlambat}</span>` : '0'}</td>
       </tr>
     `).join('');
 
     renderCharts(res.chartPerStore || [], res.chart7Days || []);
-    renderRecordList(document.getElementById('dashTodayList'), res.todayRecords || [], isAdmin);
+    renderRecordList(document.getElementById('dashTodayList'), res.todayRecords || [], isAdmin, true);
     tickAllBreakCountdowns();
   } catch (err) {
     showToast(err.message, 'error');
   } finally {
-    setLoading(false);
+    if (!silent) setLoading(false);
   }
 }
+
+// Plugin 3D Glossy untuk Grafik Batang (silinder timbul + cahaya atas-kiri + drop shadow)
+const bar3DGlossPlugin = {
+  id: 'bar3DGloss',
+  beforeDatasetsDraw(chart) {
+    const { ctx } = chart;
+    ctx.save();
+    ctx.shadowColor = 'rgba(180, 26, 44, 0.22)';
+    ctx.shadowBlur = 12;
+    ctx.shadowOffsetX = 3;
+    ctx.shadowOffsetY = 6;
+  },
+  afterDatasetsDraw(chart) {
+    const { ctx } = chart;
+    ctx.restore();
+    chart.data.datasets.forEach((ds, dsIdx) => {
+      const meta = chart.getDatasetMeta(dsIdx);
+      if (meta.hidden) return;
+      meta.data.forEach((bar) => {
+        const props = bar.getProps(['x', 'y', 'base', 'width'], true);
+        const h = props.base - props.y;
+        if (h < 8 || props.width < 6) return;
+        const left = props.x - props.width / 2;
+        const glossW = Math.max(3, props.width * 0.26);
+        ctx.save();
+        const sheen = ctx.createLinearGradient(left, props.y, left + glossW, props.base);
+        sheen.addColorStop(0, 'rgba(255, 255, 255, 0.42)');
+        sheen.addColorStop(1, 'rgba(255, 255, 255, 0.04)');
+        ctx.fillStyle = sheen;
+        ctx.beginPath();
+        if (ctx.roundRect) {
+          ctx.roundRect(left + 2, props.y + 3, glossW, Math.max(4, h - 6), 6);
+        } else {
+          ctx.rect(left + 2, props.y + 3, glossW, Math.max(4, h - 6));
+        }
+        ctx.fill();
+        ctx.restore();
+      });
+    });
+  }
+};
+
+// Plugin 3D Soft-Glow untuk Grafik Garis Tren 7 Hari
+const line3DGlowPlugin = {
+  id: 'line3DGlow',
+  beforeDatasetDraw(chart, args) {
+    const { ctx } = chart;
+    ctx.save();
+    ctx.shadowColor = args.index === 0 ? 'rgba(220, 38, 54, 0.34)' : 'rgba(13, 150, 104, 0.28)';
+    ctx.shadowBlur = 10;
+    ctx.shadowOffsetX = 0;
+    ctx.shadowOffsetY = 5;
+  },
+  afterDatasetDraw(chart) {
+    chart.ctx.restore();
+  }
+};
 
 function renderCharts(perStore, days7) {
   if (typeof Chart === 'undefined') return;
   if (state.charts.store) state.charts.store.destroy();
   if (state.charts.days) state.charts.days.destroy();
 
-  const primaryColor = (THEME_META[state.theme.preset] || THEME_META.default).color;
-
   const ctxStore = document.getElementById('chartPerStore').getContext('2d');
+  const redBarGrad = ctxStore.createLinearGradient(0, 0, 0, 230);
+  redBarGrad.addColorStop(0, '#F04352');
+  redBarGrad.addColorStop(0.5, '#D42232');
+  redBarGrad.addColorStop(1, '#9E1424');
+
+  const blueBarGrad = ctxStore.createLinearGradient(0, 0, 0, 230);
+  blueBarGrad.addColorStop(0, '#60A5FA');
+  blueBarGrad.addColorStop(0.55, '#2563EB');
+  blueBarGrad.addColorStop(1, '#1D4ED8');
+
   state.charts.store = new Chart(ctxStore, {
     type: 'bar',
     data: {
       labels: perStore.map((s) => s.label),
       datasets: [
-        { label: 'Masuk', data: perStore.map((s) => s.masuk), backgroundColor: primaryColor, borderRadius: 6 },
-        { label: 'Pulang', data: perStore.map((s) => s.pulang), backgroundColor: '#3B82F6', borderRadius: 6 }
+        {
+          label: 'Masuk',
+          data: perStore.map((s) => s.masuk),
+          backgroundColor: redBarGrad,
+          borderRadius: 10,
+          borderSkipped: false,
+          maxBarThickness: 28
+        },
+        {
+          label: 'Pulang',
+          data: perStore.map((s) => s.pulang),
+          backgroundColor: blueBarGrad,
+          borderRadius: 10,
+          borderSkipped: false,
+          maxBarThickness: 28
+        }
       ]
     },
+    plugins: [bar3DGlossPlugin],
     options: {
       responsive: true,
       maintainAspectRatio: false,
-      scales: { y: { beginAtZero: true, ticks: { stepSize: 1 } } },
+      plugins: {
+        legend: {
+          position: 'top',
+          labels: { usePointStyle: true, pointStyle: 'circle', boxWidth: 8, font: { family: 'Plus Jakarta Sans', weight: '700', size: 11 } }
+        }
+      },
+      scales: {
+        x: {
+          grid: { display: false },
+          border: { display: false },
+          ticks: { color: '#6C7486', font: { family: 'Plus Jakarta Sans', size: 10, weight: '600' } }
+        },
+        y: {
+          beginAtZero: true,
+          border: { display: false },
+          grid: { color: '#F5E8EB' },
+          ticks: { stepSize: 1, color: '#8A92A4', font: { family: 'Plus Jakarta Sans', size: 10 } }
+        }
+      },
       onHover: (evt, elements) => {
         if (evt.native && evt.native.target) {
           evt.native.target.style.cursor = elements.length ? 'pointer' : 'default';
@@ -1789,16 +2044,73 @@ function renderCharts(perStore, days7) {
   });
 
   const ctxDays = document.getElementById('chart7Days').getContext('2d');
+  const redAreaGrad = ctxDays.createLinearGradient(0, 0, 0, 220);
+  redAreaGrad.addColorStop(0, 'rgba(220, 38, 54, 0.28)');
+  redAreaGrad.addColorStop(1, 'rgba(220, 38, 54, 0.01)');
+
+  const greenAreaGrad = ctxDays.createLinearGradient(0, 0, 0, 220);
+  greenAreaGrad.addColorStop(0, 'rgba(13, 150, 104, 0.22)');
+  greenAreaGrad.addColorStop(1, 'rgba(13, 150, 104, 0.01)');
+
   state.charts.days = new Chart(ctxDays, {
     type: 'line',
     data: {
       labels: days7.map((d) => d.label),
       datasets: [
-        { label: 'Masuk', data: days7.map((d) => d.masuk), borderColor: primaryColor, backgroundColor: 'rgba(225,29,72,0.1)', tension: 0.35, fill: true },
-        { label: 'Pulang', data: days7.map((d) => d.pulang), borderColor: '#059669', backgroundColor: 'rgba(5,150,105,0.08)', tension: 0.35, fill: true }
+        {
+          label: 'Masuk',
+          data: days7.map((d) => d.masuk),
+          borderColor: '#DC2636',
+          backgroundColor: redAreaGrad,
+          borderWidth: 3,
+          pointBackgroundColor: '#FFFFFF',
+          pointBorderColor: '#DC2636',
+          pointBorderWidth: 3,
+          pointRadius: 4.5,
+          pointHoverRadius: 7,
+          tension: 0.42,
+          fill: true
+        },
+        {
+          label: 'Pulang',
+          data: days7.map((d) => d.pulang),
+          borderColor: '#0D9668',
+          backgroundColor: greenAreaGrad,
+          borderWidth: 3,
+          pointBackgroundColor: '#FFFFFF',
+          pointBorderColor: '#0D9668',
+          pointBorderWidth: 3,
+          pointRadius: 4.5,
+          pointHoverRadius: 7,
+          tension: 0.42,
+          fill: true
+        }
       ]
     },
-    options: { responsive: true, maintainAspectRatio: false, scales: { y: { beginAtZero: true, ticks: { stepSize: 1 } } } }
+    plugins: [line3DGlowPlugin],
+    options: {
+      responsive: true,
+      maintainAspectRatio: false,
+      plugins: {
+        legend: {
+          position: 'top',
+          labels: { usePointStyle: true, pointStyle: 'circle', boxWidth: 8, font: { family: 'Plus Jakarta Sans', weight: '700', size: 11 } }
+        }
+      },
+      scales: {
+        x: {
+          grid: { display: false },
+          border: { display: false },
+          ticks: { color: '#6C7486', font: { family: 'Plus Jakarta Sans', size: 10, weight: '600' } }
+        },
+        y: {
+          beginAtZero: true,
+          border: { display: false },
+          grid: { color: '#F5E8EB' },
+          ticks: { stepSize: 1, color: '#8A92A4', font: { family: 'Plus Jakarta Sans', size: 10 } }
+        }
+      }
+    }
   });
 }
 
@@ -1832,10 +2144,10 @@ async function loadStoreDetailData() {
     }
 
     listEl.innerHTML = crews.map((c) => {
-      const initial = (c.nama || 'K')[0].toUpperCase();
+      const initials = getInitials(c.nama);
       const avatarHtml = c.fotoProfil
         ? `<img src="${esc(toDisplayImageUrl(c.fotoProfil))}" alt="${esc(c.nama)}" />`
-        : esc(initial);
+        : esc(initials);
       const metaParts = [c.posisi || 'Karyawan'];
       if (c.area && c.area !== '-') metaParts.push(c.area);
       if (c.noTelp && c.noTelp !== '-') metaParts.push(c.noTelp);
@@ -1889,7 +2201,7 @@ async function loadStoreDetailData() {
   }
 }
 
-/* ======================== JADWAL SHIFT MINGGUAN & BULANAN PER TOKO ======================== */
+/* ======================== JADWAL SHIFT PER TOKO ======================== */
 
 async function loadJadwalView() {
   const isAdmin = state.user.role === 'ADMIN';
@@ -2127,7 +2439,7 @@ function shortScheduleLabel(val) {
 
 /* ======================== INSIGHT & REKAP BULANAN ======================== */
 
-async function loadInsights(period) {
+async function loadInsights(period, silent = false) {
   const isAdmin = state.user.role === 'ADMIN';
   document.getElementById('insightTopSwitcher').classList.toggle('hidden', state.user.role === 'MONITORING');
   document.getElementById('insightPageTitle').textContent = isAdmin ? 'Insight & Rekap Gaji' : 'Insight Performa Outlet';
@@ -2135,7 +2447,7 @@ async function loadInsights(period) {
   const activeBtn = document.querySelector('#insightPeriodToggle .seg-btn.active');
   const p = period || (activeBtn ? activeBtn.dataset.period : 'week');
 
-  setLoading(true, 'Menghitung insight...');
+  if (!silent) setLoading(true, 'Menghitung insight...');
   try {
     const res = await apiCall({
       action: isAdmin ? 'getInsights' : 'getMonitoringInsights',
@@ -2145,41 +2457,58 @@ async function loadInsights(period) {
 
     const o = res.overall;
     document.getElementById('insJam').textContent = `${o.curJam} jam`;
-    document.getElementById('insJamDiff').textContent = formatDiff(o.curJam, o.prevJam, ' jam');
+    setDiffPill(document.getElementById('insJamDiff'), o.curJam, o.prevJam, ' jam', false);
+
     document.getElementById('insHadir').textContent = `${o.curHadir} hari`;
-    document.getElementById('insHadirDiff').textContent = formatDiff(o.curHadir, o.prevHadir, ' hari');
+    setDiffPill(document.getElementById('insHadirDiff'), o.curHadir, o.prevHadir, ' hari', false);
+
     document.getElementById('insTelat').textContent = `${o.curTelat}x`;
-    document.getElementById('insTelatDiff').textContent = formatDiff(o.curTelat, o.prevTelat, 'x');
+    setDiffPill(document.getElementById('insTelatDiff'), o.curTelat, o.prevTelat, 'x', true);
 
     document.getElementById('insStoreTable').innerHTML = (res.perStore || []).map((s) => `
       <tr class="clickable-row" onclick="openStoreDetail(decodeURIComponent('${encodeURIComponent(s.toko)}'))">
-        <td><strong>${esc(s.toko)} &rsaquo;</strong></td>
-        <td>${s.curJam}j <small class="subtitle">(lalu ${s.prevJam}j)</small></td>
-        <td>${s.curHadir} <small class="subtitle">(lalu ${s.prevHadir})</small></td>
-        <td>${s.curTelat} <small class="subtitle">(lalu ${s.prevTelat})</small></td>
+        <td>
+          <div class="row-entity-cell">
+            <span class="row-init-badge">${esc(getInitials(s.toko))}</span>
+            <span class="row-entity-name">${esc(s.toko)}</span>
+          </div>
+        </td>
+        <td><strong>${s.curJam}j</strong> <small class="subtitle">(lalu ${s.prevJam}j)</small></td>
+        <td><span class="num-pill num-pill-ok">${s.curHadir}</span> <small class="subtitle">(lalu ${s.prevHadir})</small></td>
+        <td>${s.curTelat > 0 ? `<span class="num-pill num-pill-danger">${s.curTelat}</span>` : '0'} <small class="subtitle">(lalu ${s.prevTelat})</small></td>
       </tr>
     `).join('') || '<tr><td colspan="4" class="text-center">Belum ada data.</td></tr>';
 
     document.getElementById('insCrewTable').innerHTML = (res.perCrew || []).map((c) => `
       <tr>
-        <td><strong>${esc(c.nama)}</strong></td>
+        <td>
+          <div class="row-entity-cell">
+            <span class="row-init-badge">${esc(getInitials(c.nama))}</span>
+            <span class="row-entity-name">${esc(c.nama)}</span>
+          </div>
+        </td>
         <td>${esc(c.toko)}</td>
-        <td>${c.curJam}j <small class="subtitle">(${c.prevJam}j)</small></td>
-        <td>${c.curHadir} <small class="subtitle">(${c.prevHadir})</small></td>
-        <td>${c.curTelat} <small class="subtitle">(${c.prevTelat})</small></td>
+        <td><strong>${c.curJam}j</strong> <small class="subtitle">(${c.prevJam}j)</small></td>
+        <td><span class="num-pill num-pill-ok">${c.curHadir}</span> <small class="subtitle">(${c.prevHadir})</small></td>
+        <td>${c.curTelat > 0 ? `<span class="num-pill num-pill-danger">${c.curTelat}</span>` : '0'} <small class="subtitle">(${c.prevTelat})</small></td>
       </tr>
     `).join('') || '<tr><td colspan="5" class="text-center">Belum ada data.</td></tr>';
   } catch (err) {
     showToast(err.message, 'error');
   } finally {
-    setLoading(false);
+    if (!silent) setLoading(false);
   }
 }
 
-function formatDiff(cur, prev, unit) {
+function setDiffPill(el, cur, prev, unit, invertColor) {
+  if (!el) return;
   const diff = Math.round((cur - prev) * 10) / 10;
   const sign = diff > 0 ? '+' : '';
-  return `${sign}${diff}${unit} vs lalu (${prev}${unit})`;
+  const arrow = diff > 0 ? '↑ ' : (diff < 0 ? '↓ ' : '');
+  el.textContent = `${arrow}${sign}${diff}${unit} vs lalu (${prev}${unit})`;
+  el.classList.remove('diff-pos', 'diff-neg');
+  if (diff > 0) el.classList.add(invertColor ? 'diff-neg' : 'diff-pos');
+  else if (diff < 0) el.classList.add(invertColor ? 'diff-pos' : 'diff-neg');
 }
 
 function initMonthYearSelectors() {
@@ -2208,7 +2537,18 @@ async function loadMonthlyRecap() {
     state.lastRecap = res;
     const tbody = document.getElementById('recapTableBody');
     if (!res.recap.length) {
-      tbody.innerHTML = '<tr><td colspan="7" class="text-center">Tidak ada data absensi di bulan ini.</td></tr>';
+      tbody.innerHTML = `
+        <tr>
+          <td colspan="7" class="recap-empty-cell">
+            <div class="mascot-empty-box">
+              <div class="mascot-empty-circle"><img data-mascot-img alt="" /></div>
+              <strong>Tidak ada data absensi di bulan ini.</strong>
+              <span>Pilih bulan lain lalu klik Tampilkan.</span>
+            </div>
+          </td>
+        </tr>
+      `;
+      applyMascotAssets(tbody);
       return;
     }
     tbody.innerHTML = res.recap.map((r) => `
@@ -2253,11 +2593,31 @@ function exportRecapCsv() {
   URL.revokeObjectURL(a.href);
 }
 
-/* ======================== EDIT & HAPUS ABSENSI (ADMIN ONLY) ======================== */
+/* ======================== BUKTI FOTO (+ META WAKTU), EDIT & HAPUS ======================== */
 
-window.previewPhoto = function (url) {
+window.previewPhoto = function (url, encodedMeta = '') {
   document.getElementById('modalPhotoImg').src = toDisplayImageUrl(url, 1200);
   document.getElementById('modalPhotoLink').href = url;
+
+  const metaEl = document.getElementById('modalPhotoMeta');
+  if (encodedMeta) {
+    try {
+      const m = JSON.parse(decodeURIComponent(encodedMeta));
+      const dateLine = [m.hari, m.tanggalDisplay].filter(Boolean).join(', ');
+      const timeLine = m.jam && m.jam !== '-' ? `${m.jam} WIB` : '-';
+      const statusLine = m.status && m.status !== '-' ? ` • ${m.status}` : '';
+      metaEl.innerHTML = `
+        <strong>${esc(m.nama || '-')} • ${esc(m.toko || '-')} • ${esc(m.jenis || '-')} (${esc(m.shift || '-')})</strong>
+        <span>Waktu Tercatat: ${esc(dateLine || '-')} • ${esc(timeLine)}${esc(statusLine)}</span>
+      `;
+      metaEl.classList.remove('hidden');
+    } catch {
+      metaEl.classList.add('hidden');
+    }
+  } else {
+    metaEl.classList.add('hidden');
+  }
+
   openModal('modalPhoto');
 };
 
@@ -2342,24 +2702,23 @@ function refreshCurrentAdminView() {
 
 /* ======================== KELOLA MASTER (ADMIN ONLY) ======================== */
 
-async function loadMasterData() {
-  setLoading(true, 'Memuat data master...');
+async function loadMasterData(silent = false) {
+  if (!silent) setLoading(true, 'Memuat data master...');
   try {
     const res = await apiCall({ action: 'getMasterData' });
     state.stores = res.stores || [];
     state.crews = res.crews || [];
     localStorage.setItem('momoyo_stores', JSON.stringify(state.stores));
     populateFilterStores();
-    syncThemeControls();
     syncGreetingInputs();
 
     const crewEl = document.getElementById('manageCrewList');
     crewEl.innerHTML = state.crews.map((c) => {
       const enc = encodeURIComponent(JSON.stringify(c));
-      const initial = (c.nama || 'K')[0].toUpperCase();
+      const initials = getInitials(c.nama);
       const avatarHtml = c.fotoProfil
         ? `<img src="${esc(toDisplayImageUrl(c.fotoProfil))}" alt="${esc(c.nama)}" />`
-        : esc(initial);
+        : esc(initials);
       const subParts = [c.toko];
       if (c.posisi) subParts.push(c.posisi);
       if (c.area) subParts.push(c.area);
@@ -2414,7 +2773,7 @@ async function loadMasterData() {
   } catch (err) {
     showToast(err.message, 'error');
   } finally {
-    setLoading(false);
+    if (!silent) setLoading(false);
   }
 }
 
@@ -2493,7 +2852,7 @@ window.openCrewModal = function (encoded) {
     document.getElementById('crewTelpInput').value = '';
     document.getElementById('crewPinInput').value = '';
     document.getElementById('crewAktifInput').checked = true;
-    renderAvatar(photoPrev, '', 'K');
+    renderAvatar(photoPrev, '', 'KR');
     clearPhotoBtn.classList.add('hidden');
     curPinGroup.classList.add('hidden');
   }
@@ -2658,7 +3017,6 @@ async function submitChangeAdminPass(e) {
 /* ======================== EVENT BINDING & UTILITAS ======================== */
 
 function bindEvents() {
-  // Tabs Login (Karyawan / Admin Only / Management Monitoring)
   const switchLoginTab = (tab) => {
     document.getElementById('tabRoleCrew').classList.toggle('active', tab === 'crew');
     document.getElementById('tabRoleAdmin').classList.toggle('active', tab === 'admin');
@@ -2677,19 +3035,16 @@ function bindEvents() {
   document.getElementById('formLoginAdmin').addEventListener('submit', handleLoginAdmin);
   document.getElementById('btnLogout').addEventListener('click', handleLogout);
 
-  // Switcher Dashboard <-> Insight
   document.querySelectorAll('[data-switch-view]').forEach((btn) => {
     btn.addEventListener('click', () => switchView(btn.dataset.switchView));
   });
 
-  // Profil Header & Edit Profil (Admin Only Lengkap, Karyawan Khusus Foto)
   document.getElementById('btnOpenProfile').addEventListener('click', openProfileModal);
   document.getElementById('btnPickMyPhoto').addEventListener('click', () => document.getElementById('inputMyPhoto').click());
   document.getElementById('inputMyPhoto').addEventListener('change', handleMyPhotoPick);
   document.getElementById('btnClearMyPhoto').addEventListener('click', clearMyPhoto);
   document.getElementById('formAdminProfile').addEventListener('submit', submitAdminProfileForm);
 
-  // Form Absen (Masuk / Istirahat / Pulang)
   document.querySelectorAll('#formAbsen .seg-btn').forEach((btn) => {
     btn.addEventListener('click', () => {
       document.querySelectorAll('#formAbsen .seg-btn').forEach((b) => b.classList.remove('active'));
@@ -2715,7 +3070,6 @@ function bindEvents() {
   document.getElementById('formAbsen').addEventListener('submit', submitAttendance);
   document.getElementById('btnRetryAbsen').addEventListener('click', () => submitAttendance());
 
-  // Kalender Karyawan Pribadi
   document.getElementById('btnRefreshMyCalendar').addEventListener('click', loadCrewCalendar);
   document.getElementById('btnCalPrev').addEventListener('click', () => {
     state.calMonth -= 1;
@@ -2728,7 +3082,6 @@ function bindEvents() {
     loadCrewCalendar();
   });
 
-  // Modal DETAILS Kalender Karyawan (Admin & Monitoring)
   document.getElementById('btnAdminCalPrev').addEventListener('click', () => {
     state.adminCalMonth -= 1;
     if (state.adminCalMonth < 1) { state.adminCalMonth = 12; state.adminCalYear -= 1; }
@@ -2740,7 +3093,6 @@ function bindEvents() {
     loadAdminCrewCalendar();
   });
 
-  // Riwayat & Galeri Foto
   document.getElementById('btnApplyFilter').addEventListener('click', loadHistory);
   document.getElementById('btnRefreshHistory').addEventListener('click', loadHistory);
   document.getElementById('btnResetFilter').addEventListener('click', () => {
@@ -2761,11 +3113,9 @@ function bindEvents() {
     renderHistoryCurrentMode();
   });
 
-  // Dashboard & Detail Toko
-  document.getElementById('btnRefreshDash').addEventListener('click', loadDashboard);
+  document.getElementById('btnRefreshDash').addEventListener('click', () => loadDashboard());
   document.getElementById('btnReloadStoreDetail').addEventListener('click', loadStoreDetailData);
 
-  // Jadwal Shift per Toko
   document.getElementById('jadwalTokoSelect').addEventListener('change', loadJadwalView);
   document.getElementById('jadwalMonthSelect').addEventListener('change', loadJadwalView);
   document.getElementById('jadwalYearSelect').addEventListener('change', loadJadwalView);
@@ -2795,7 +3145,6 @@ function bindEvents() {
     state.jadwalBkoPending = null;
   });
 
-  // Insight & Rekap
   document.querySelectorAll('#insightPeriodToggle .seg-btn').forEach((btn) => {
     btn.addEventListener('click', () => {
       document.querySelectorAll('#insightPeriodToggle .seg-btn').forEach((b) => b.classList.remove('active'));
@@ -2806,41 +3155,8 @@ function bindEvents() {
   document.getElementById('btnLoadRecap').addEventListener('click', loadMonthlyRecap);
   document.getElementById('btnExportCsv').addEventListener('click', exportRecapCsv);
 
-  // Teks Ucapan & Tema + Dual Wallpaper (Admin Only Kelola)
   document.getElementById('formAbsenGreetings').addEventListener('submit', saveAbsenGreetings);
-  document.querySelectorAll('#themePresetGrid .theme-chip').forEach((btn) => {
-    btn.addEventListener('click', () => {
-      state.themeDraftPreset = btn.dataset.themePreset;
-      document.querySelectorAll('#themePresetGrid .theme-chip').forEach((b) => b.classList.remove('active'));
-      btn.classList.add('active');
-    });
-  });
 
-  // Slot Wallpaper HP (Portrait)
-  document.getElementById('btnPickWallpaperMobile').addEventListener('click', () => document.getElementById('inputWallpaperMobile').click());
-  document.getElementById('inputWallpaperMobile').addEventListener('change', (e) => handleWallpaperSlotPick(e, 'mobile'));
-  document.getElementById('btnClearWallpaperMobile').addEventListener('click', () => {
-    state.themeWallpaperMobileDraft = '';
-    state.themeClearWallpaperMobile = true;
-    document.getElementById('wallpaperMobilePreviewImg').src = '';
-    document.getElementById('wallpaperMobilePreviewBox').classList.add('hidden');
-    showToast('Wallpaper HP akan dihapus saat Anda klik Terapkan.');
-  });
-
-  // Slot Wallpaper Laptop (Landscape)
-  document.getElementById('btnPickWallpaperDesktop').addEventListener('click', () => document.getElementById('inputWallpaperDesktop').click());
-  document.getElementById('inputWallpaperDesktop').addEventListener('change', (e) => handleWallpaperSlotPick(e, 'desktop'));
-  document.getElementById('btnClearWallpaperDesktop').addEventListener('click', () => {
-    state.themeWallpaperDesktopDraft = '';
-    state.themeClearWallpaperDesktop = true;
-    document.getElementById('wallpaperDesktopPreviewImg').src = '';
-    document.getElementById('wallpaperDesktopPreviewBox').classList.add('hidden');
-    showToast('Wallpaper Laptop akan dihapus saat Anda klik Terapkan.');
-  });
-
-  document.getElementById('btnSaveTheme').addEventListener('click', saveAppTheme);
-
-  // Admin Modals & Kelola Karyawan/Toko
   document.getElementById('formEditRecord').addEventListener('submit', submitEditRecord);
   document.getElementById('btnConfirmDelete').addEventListener('click', confirmDeleteAction);
   document.getElementById('btnAddCrew').addEventListener('click', () => openCrewModal());
@@ -2848,9 +3164,7 @@ function bindEvents() {
   document.getElementById('crewPosisiInput').addEventListener('change', (e) => {
     const isCustom = e.target.value === '__CUSTOM__';
     document.getElementById('crewPosisiCustomGroup').classList.toggle('hidden', !isCustom);
-    if (isCustom) {
-      document.getElementById('crewPosisiCustomInput').focus();
-    }
+    if (isCustom) document.getElementById('crewPosisiCustomInput').focus();
   });
 
   document.getElementById('btnPickCrewPhoto').addEventListener('click', () => document.getElementById('inputCrewPhoto').click());
@@ -2858,7 +3172,7 @@ function bindEvents() {
   document.getElementById('btnClearCrewPhoto').addEventListener('click', () => {
     state.crewPhotoDraft = '';
     state.crewClearPhoto = true;
-    const nm = document.getElementById('crewNamaInput').value || 'K';
+    const nm = document.getElementById('crewNamaInput').value || 'KR';
     renderAvatar(document.getElementById('crewPhotoPreview'), '', nm);
     document.getElementById('btnClearCrewPhoto').classList.add('hidden');
   });
